@@ -128,7 +128,7 @@ done
 EOF
 
 # prepare ip-to-location-db
-FROM curlimages/curl:8.9.1 AS ip2location
+FROM curlimages/curl:8.10.1 AS ip2location
 WORKDIR /etc/zta-iam/ip2location
 RUN curl -LSso /etc/zta-iam/ip2location/IP2LOCATION-LITE-DB5.BIN https://aorta-chelpis-release.s3.ap-northeast-1.amazonaws.com/releases/IP2LOCATION-LITE-DB5.BIN
 
