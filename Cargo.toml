@@ -62,7 +62,7 @@ tokio-stream = { version = "0.1", default-features = false }
 # http / grpc
 axum             = { version = "0.6", default-features = false }
 axum-extra       = { version = "0.8", default-features = false }
-http             = { version = "0.2", default-features = false }
+http             = { version = "1.1", default-features = false }
 hyper            = { version = "0.14", default-features = false }
 prost            = { version = "0.12", default-features = false, features = ["std"] }
 prost-build      = { version = "0.12", default-features = false }

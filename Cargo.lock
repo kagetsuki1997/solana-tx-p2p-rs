@@ -4108,7 +4108,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "futures-util",
- "http 0.2.12",
+ "http 1.1.0",
  "humantime 2.1.0",
  "hyper 0.14.30",
  "lazy_static",
