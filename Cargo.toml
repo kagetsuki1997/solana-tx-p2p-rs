@@ -44,7 +44,7 @@ josekit = { version = "0.8", default-features = false }
 jsonwebtoken = { version = "9.2", default-features = false, features = ["use_pem"] }
 openssl = { version = "0.10", default-features = false }
 p256 = { version = "0.13", default-features = false, features = ["std"] }
-rustls = { version = "0.21", default-features = false }
+rustls = { version = "0.23", default-features = false }
 rustls-pemfile = { version = "2", default-features = false }
 sha3 = { version = "0.10", default-features = false, features = [
   "std",
