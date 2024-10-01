@@ -51,7 +51,7 @@ sha3 = { version = "0.10", default-features = false, features = [
   #  Use optimized assembly when available (currently only ARMv8)
   "asm",
 ] }
-tokio-rustls = { version = "0.24", default-features = false }
+tokio-rustls = { version = "0.26", default-features = false }
 
 # async
 async-trait  = { version = "0.1", default-features = false }
