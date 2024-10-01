@@ -1,0 +1,38 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  name: {{ include "zta-iam.fullname" . }}
+spec:
+  hosts:
+    - {{ .Values.ingress.domain }}
+  gateways:
+    - mesh
+    - {{ include "zta-iam.fullname" . }}
+  http:
+    - name: rest
+      corsPolicy:
+        allowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        allowHeaders:
+          - origin
+          - content-type
+          - accept
+          - authorization
+      route:
+        - destination:
+            host: {{ include "zta-iam.host" . }}
+            port:
+              number: {{ include "common.httpPort" . }}
+    - name: grpc
+      route:
+        - destination:
+            host: {{ include "zta-iam.host" . }}
+            port:
+              number: {{ include "common.grpcPort" . }}
+{{- end }}

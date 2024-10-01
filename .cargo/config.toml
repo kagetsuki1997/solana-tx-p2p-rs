@@ -1,0 +1,22 @@
+[registries.crates-io]
+protocol = "sparse"
+
+[net]
+git-fetch-with-cli = true
+
+[build]
+rustflags    = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld", "--cfg", "tokio_unstable"]
+rustdocflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld", "--cfg", "tokio_unstable"]
+
+[target.x86_64-unknown-linux-musl]
+rustflags = [
+  "-C",
+  "linker=clang",
+  "-C",
+  "link-arg=-fuse-ld=lld",
+  # Ref: https://blog.libralight.dev/bindgen-on-alpine-linux-issues-record/
+  "-C",
+  "target-feature=-crt-static",
+  "--cfg",
+  "tokio_unstable",
+]

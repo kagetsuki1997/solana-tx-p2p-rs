@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: tx-p2p
+  description: Transaction-relaying Peer-to-peer Node
+  license:
+    name: ""
+  version: 0.0.1
+paths:
+  /api/v1/peer/discovery:
+    post:
+      tags:
+        - peer::v1
+      summary: Discovery peers
+      operationId: discovery
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Peer"
+        "500":
+          description: Internal server error
+components:
+  schemas:
+    Peer:
+      type: object
+      required:
+        - id
+        - isSigner
+        - isLeader
+      properties:
+        id:
+          type: string
+        isLeader:
+          type: boolean
+        isSigner:
+          type: boolean

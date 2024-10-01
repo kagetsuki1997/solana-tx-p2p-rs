@@ -1,0 +1,15 @@
+name: Release
+on:
+  push:
+    branches:
+      - ci/*
+    tags:
+      - "*-v*"
+
+jobs:
+  image:
+    name: Build and publish images
+    uses: ./.github/workflows/build-image.yaml
+    secrets: inherit
+    with:
+      platforms: linux/amd64

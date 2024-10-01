@@ -1,0 +1,28 @@
+name: Common
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - release/**
+      - hotfix/**
+      - feature/**
+      - ci/**
+  workflow_dispatch:
+
+concurrency:
+  group: common-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: chelpis/actions-lib/.github/workflows/common-lint.yaml@main
+    secrets: inherit
+
+  lines-of-code:
+    name: Lines of code
+    uses: chelpis/actions-lib/.github/workflows/lines-of-code.yaml@main
+    secrets: inherit

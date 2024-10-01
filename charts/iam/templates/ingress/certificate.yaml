@@ -1,0 +1,19 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  namespace: istio-system
+  name: {{ include "zta-iam.fullname" . }}
+spec:
+  secretName: {{ include "zta-iam.certificate.secretName" . }}
+  commonName: {{ .Values.ingress.domain }}
+  dnsNames:
+    - {{ .Values.ingress.domain }}
+  issuerRef:
+    {{- toYaml .Values.ingress.tls.certificate.issuerRef | nindent 4 }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+{{- end }}

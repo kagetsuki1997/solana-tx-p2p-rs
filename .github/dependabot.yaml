@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    labels:
+      - dependencies
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "21:00"
+    open-pull-requests-limit: 100
+
+  - package-ecosystem: docker
+    directory: /dev-support/containers/alpine
+    labels:
+      - dependencies
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "21:00"
+    open-pull-requests-limit: 100
+
+  - package-ecosystem: github-actions
+    directory: /
+    labels:
+      - dependencies
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "21:00"
+    open-pull-requests-limit: 100

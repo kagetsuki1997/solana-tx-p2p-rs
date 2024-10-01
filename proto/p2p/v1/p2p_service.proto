@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package p2p.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "p2p/p2p.proto";
+
+service PeerService {
+  rpc Discovery(google.protobuf.Empty) returns (Peers);
+}

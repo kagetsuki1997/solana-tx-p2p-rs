@@ -1,0 +1,138 @@
+[workspace]
+members  = ["rust-peer-to-peer-example", "tx-p2p"]
+resolver = "2"
+
+[workspace.package]
+version       = "0.0.1"
+authors       = []
+edition       = "2021"
+rust-version  = "1.76"
+documentation = "https://docs.rs/"
+readme        = "README.md"
+homepage      = "https://"
+repository    = "https://github.com/"
+license-file  = "LICENSE"
+publish       = false
+
+[workspace.dependencies]
+tx-p2p = { path = "tx-p2p", default-features = false }
+
+# logging / telemetry
+opentelemetry                      = { version = "0.21", default-features = false }
+opentelemetry-otlp                 = { version = "0.14", default-features = false }
+opentelemetry-semantic-conventions = { version = "0.13", default-features = false }
+opentelemetry_sdk                  = { version = "0.21", default-features = false }
+tracing                            = { version = "0.1", default-features = false, features = ["std"] }
+tracing-opentelemetry              = { version = "0.22", default-features = false }
+tracing-subscriber                 = { version = "0.3", default-features = false, features = ["std"] }
+
+# error handling
+snafu     = { version = "0.8", default-features = false, features = ["std"] }
+thiserror = { version = "1", default-features = false }
+
+# encoding
+base64     = { version = "0.22", default-features = false, features = ["std"] }
+hex        = { version = "0.4", default-features = false, features = ["std"] }
+schemars   = { version = "0.8", default-features = false }
+serde      = { version = "1", default-features = false, features = ["std"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
+serde_yaml = { version = "0.9", default-features = false }
+
+# crypto
+elliptic-curve = { version = "0.13", default-features = false, features = ["std"] }
+josekit = { version = "0.8", default-features = false }
+jsonwebtoken = { version = "9.2", default-features = false, features = ["use_pem"] }
+openssl = { version = "0.10", default-features = false }
+p256 = { version = "0.13", default-features = false, features = ["std"] }
+rustls = { version = "0.21", default-features = false }
+rustls-pemfile = { version = "2", default-features = false }
+sha3 = { version = "0.10", default-features = false, features = [
+  "std",
+  #  Use optimized assembly when available (currently only ARMv8)
+  "asm",
+] }
+tokio-rustls = { version = "0.24", default-features = false }
+
+# async
+async-trait  = { version = "0.1", default-features = false }
+futures-util = { version = "0.3", default-features = false }
+tokio        = { version = "1", default-features = false }
+tokio-stream = { version = "0.1", default-features = false }
+
+# http / grpc
+axum             = { version = "0.6", default-features = false }
+axum-extra       = { version = "0.8", default-features = false }
+http             = { version = "0.2", default-features = false }
+hyper            = { version = "0.14", default-features = false }
+prost            = { version = "0.12", default-features = false, features = ["std"] }
+prost-build      = { version = "0.12", default-features = false }
+prost-types      = { version = "0.12", default-features = false, features = ["std"] }
+reqwest          = { version = "0.12", default-features = false }
+tonic            = { version = "0.10", default-features = false }
+tonic-build      = { version = "0.10", default-features = false }
+tonic-reflection = { version = "0.10", default-features = false }
+tonic-types      = { version = "0.10", default-features = false }
+tower            = { version = "0.4", default-features = false }
+tower-http       = { version = "0.4", default-features = false }
+url              = { version = "2", default-features = false }
+
+# cli
+clap          = { version = "4", default-features = false, features = ["std"] }
+clap_complete = { version = "4", default-features = false }
+
+# misc
+bytes       = { version = "1.5", default-features = false }
+chrono      = { version = "0.4", default-features = false, features = ["std", "serde"] }
+either      = { version = "1", default-features = false, features = ["use_std"] }
+humantime   = { version = "2", default-features = false }
+lazy_static = { version = "1", default-features = false }
+libp2p      = { version = "0.54", default-features = false }
+mimalloc    = { version = "0.1", default-features = false, features = ["secure"] }
+rand        = { version = "0.8", default-features = false, features = ["std"] }
+rand_core   = { version = "0.6", default-features = false }
+regex       = { version = "1", default-features = false, features = ["std"] }
+utoipa      = { version = "4", default-features = false }
+uuid        = { version = "1", default-features = false, features = ["std"] }
+
+[workspace.lints.rust]
+absolute_paths_not_starting_with_crate  = "warn"
+deprecated_in_future                    = "warn"
+elided_lifetimes_in_paths               = "warn"
+explicit_outlives_requirements          = "warn"
+keyword_idents                          = { level = "warn", priority = -1 }
+let_underscore_drop                     = "warn"
+macro_use_extern_crate                  = "warn"
+meta_variable_misuse                    = "warn"
+missing_abi                             = "warn"
+non_ascii_idents                        = "warn"
+rust_2021_incompatible_closure_captures = "warn"
+rust_2021_incompatible_or_patterns      = "warn"
+rust_2021_prefixes_incompatible_syntax  = "warn"
+rust_2021_prelude_collisions            = "warn"
+single_use_lifetimes                    = "warn"
+trivial_casts                           = "warn"
+trivial_numeric_casts                   = "warn"
+unit_bindings                           = "warn"
+unsafe_op_in_unsafe_fn                  = "warn"
+unused_extern_crates                    = "warn"
+unused_import_braces                    = "warn"
+unused_lifetimes                        = "warn"
+unused_macro_rules                      = "warn"
+
+[workspace.lints.clippy]
+all      = "deny"
+cargo    = "deny"
+nursery  = "deny"
+pedantic = "deny"
+
+future_not_send         = { level = "allow", priority = 1 }
+module_name_repetitions = { level = "allow", priority = 1 }
+multiple_crate_versions = { level = "allow", priority = 1 }
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
+[profile.release-lto]
+inherits = "release"
+lto      = true
+strip    = true

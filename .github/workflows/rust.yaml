@@ -1,0 +1,453 @@
+name: Rust
+
+on:
+  pull_request:
+    paths:
+      - .cargo/**
+      - .github/**
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - crates/**
+      - iam/**
+      - rust-toolchain.toml
+      - rustfmt.toml
+  push:
+    branches:
+      - main
+      - develop
+      - release/**
+      - hotfix/**
+      - feature/**
+      - ci/**
+  workflow_dispatch:
+
+env:
+  DEFAULT_CARGO_ARGS: --workspace --all-targets
+
+concurrency:
+  group: rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rustfmt:
+    name: Check rust format
+    runs-on:
+      - linux-amd64
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          components: rustfmt
+          sccache: false
+          cache: false
+
+      - name: Print Version
+        run: |
+          cargo fmt --version
+
+      - uses: LoliGothick/rustfmt-check@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          toolchain: nightly
+          flags: --all
+
+  clippy:
+    name: Clippy
+    runs-on:
+      - linux-amd64
+    needs:
+      - rustfmt
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          components: clippy
+          cache-shared-key: build
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Print Version
+        run: |
+          cargo clippy --version
+
+      - name: Run cargo clippy
+        uses: LoliGothick/clippy-check@master
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          toolchain: nightly
+          options: ${{ env.DEFAULT_CARGO_ARGS }}
+
+  doc:
+    name: Doc
+    runs-on:
+      - linux-amd64
+    needs:
+      - rustfmt
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          components: rust-docs
+          cache-shared-key: build
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Run cargo doc
+        run: |
+          cargo doc --workspace --no-deps --bins
+
+  udeps:
+    name: Check unused dependencies
+    runs-on:
+      - linux-amd64
+    needs:
+      - rustfmt
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld, git
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          cache-shared-key: test
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Run cargo-udeps
+        uses: aig787/cargo-udeps-action@v1
+        with:
+          args: ${{ env.DEFAULT_CARGO_ARGS }}
+          target: x86_64-unknown-linux-musl
+
+  test:
+    name: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          # - stable
+          # - beta
+          - nightly
+        profile:
+          - debug
+          - release
+    runs-on:
+      - linux-amd64
+    needs:
+      - clippy
+      - doc
+      - udeps
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          tools: nextest
+          cache-shared-key: test
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Print Version
+        run: |
+          cargo nextest --version
+
+      - name: Run cargo nextest
+        env:
+          NEXTEST_RETRIES: 5
+        run: |
+          cargo nextest run \
+            ${{ env.DEFAULT_CARGO_ARGS }} \
+            --no-fail-fast \
+            ${{ matrix.profile != 'debug' && format('--cargo-profile {0}', matrix.profile) || '' }}
+
+  miri:
+    name: Miri
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - nightly
+        profile:
+          - debug
+          - release
+    runs-on:
+      - linux-amd64
+    needs:
+      - clippy
+      - doc
+      - udeps
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: miri,rust-src
+          tools: nextest
+          sccache: false
+          cache-shared-key: test-miri
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Print Version
+        run: |
+          cargo nextest --version
+          cargo miri --version
+
+      - name: Run cargo miri
+        env:
+          MIRIFLAGS: -Zmiri-symbolic-alignment-check
+          NEXTEST_RETRIES: 5
+        run: |
+          cargo miri setup
+          cargo miri nextest run \
+            ${{ env.DEFAULT_CARGO_ARGS }} \
+            --no-fail-fast \
+            ${{ matrix.profile != 'debug' && format('--cargo-profile {0}', matrix.profile) || '' }}
+
+  coverage:
+    name: Coverage
+    runs-on:
+      - linux-amd64
+    needs:
+      - test
+      - miri
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang, make, cmake, lld
+        shell: bash
+        run: |
+          if ! (command -v clang && command -v make && command -v cmake && command -v lld && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              make \
+              cmake \
+              lld \
+              git \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Setup protoc
+        uses: chelpis/actions-lib/actions/setup-protoc@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          tools: nextest,cargo-llvm-cov
+          cache-shared-key: test
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: cargo llvm-cov --version
+        run: |
+          cargo nextest --version
+          cargo llvm-cov --version
+
+      - name: Run cargo llvm-cov
+        run: |
+          cargo llvm-cov nextest \
+            ${{ env.DEFAULT_CARGO_ARGS }}

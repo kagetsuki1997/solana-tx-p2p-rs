@@ -1,0 +1,121 @@
+name: Build Container Image
+
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        type: string
+        description: Platform to build
+        required: false
+    outputs:
+      version:
+        description: The image version
+        value: ${{ jobs.image.outputs.version }}
+  workflow_dispatch:
+    inputs:
+      platforms:
+        type: string
+        description: Platform to build
+        required: false
+
+jobs:
+  image:
+    name: Build and publish images
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      version: ${{ steps.metadata-zta-iam.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - debug
+          - release-lto
+    runs-on:
+      - linux-amd64
+    steps:
+      - name: Obtain GitHub Token for private repository
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-west-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup docker-buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: latest
+
+      - name: Install git
+        shell: bash
+        run: |
+          if ! command -v git &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              git
+          fi
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Container metadata - Zero Trust Architecture IAM
+        id: metadata-zta-iam
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.CONTAINER_REGISTRY }}/zta/iam
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=edge
+            type=raw,enable=${{ !contains(github.ref, 'refs/tags/') }},value=build-{{date 'YYYY.MM.DD'}}-${{ github.run_id }}-{{sha}}
+          flavor: |
+            latest=auto
+            suffix=${{ matrix.profile == 'debug' && '-debug' || ''}}
+          bake-target: zta-iam
+
+      - name: Build container images
+        id: bake
+        uses: docker/bake-action@v5
+        env:
+          PROFILE: ${{ matrix.profile }}
+          GITHUB_BASIC_TOKEN: ${{ steps.github-token.outputs.github-basic-token }}
+        with:
+          pull: true
+          push: true
+          provenance: mode=max
+          sbom: true
+          set: |
+            ${{ inputs.platforms && format('base.platform={0}', inputs.platforms) || '' }}
+            base.secrets=type=env,id=GITHUB_BASIC_TOKEN
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+          files: |
+            cwd://./dev-support/containers/docker-bake.hcl
+            ${{ steps.metadata-zta-iam.outputs.bake-file-annotations }}
+            ${{ steps.metadata-zta-iam.outputs.bake-file-labels }}
+            ${{ steps.metadata-zta-iam.outputs.bake-file-tags }}
+
+      - name: Print image tags
+        run: |
+          {
+            echo '# Image Tags :rocket:'
+            echo '```'
+            echo '${{ steps.metadata-zta-iam.outputs.tags }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

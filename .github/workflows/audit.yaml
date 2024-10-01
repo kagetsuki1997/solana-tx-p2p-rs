@@ -1,0 +1,103 @@
+name: Audit
+
+on:
+  pull_request:
+    paths:
+      - .cargo/**
+      - .github/**
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+  push:
+    branches:
+      - main
+      - develop
+      - release/**
+      - hotfix/**
+      - feature/**
+      - ci/**
+    paths:
+      - .cargo/**
+      - .github/**
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+  schedule:
+    - cron: 0 21 * * *
+  workflow_dispatch:
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Security audit
+    runs-on:
+      - linux-amd64
+    steps:
+      - name: Obtain GitHub Token
+        id: github-token
+        uses: chelpis/actions-lib/actions/github-token@main
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          repositories: rust-lib,protobuf-types
+
+      - name: Install clang
+        shell: bash
+        run: |
+          if ! (command -v cc && command -v git) &> /dev/null
+          then
+            sudo apt update
+            sudo apt install -y --no-install-recommends \
+              clang \
+              git
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          sccache: false
+          cache-shared-key: audit
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ steps.github-token.outputs.github-token }}
+
+  deny:
+    name: Check dependencies
+    strategy:
+      matrix:
+        checks:
+          - advisories
+          - bans licenses sources
+    runs-on:
+      - linux-amd64
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        id: setup-rust
+        uses: chelpis/actions-lib/actions/setup-rust@main
+        with:
+          toolchain: nightly
+          sccache: false
+          cache-shared-key: test
+          app-id: ${{ vars.CI_APP_ID }}
+          app-private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          private-repositories: rust-lib,protobuf-types
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ matrix.checks }}
+          credentials: https://x-access-token:${{ steps.setup-rust.outputs.github-token }}@github.com

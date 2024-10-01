@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  {{- with .Values.service.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "zta-iam.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ include "common.httpPort" .}}
+      protocol: TCP
+      appProtocol: http
+      targetPort: http
+    - name: grpc
+      port: {{ include "common.grpcPort" . }}
+      protocol: TCP
+      appProtocol: grpc
+      targetPort: grpc
+    - name: metrics
+      port: {{ include "common.metricsPort" . }}
+      protocol: TCP
+      appProtocol: http
+      targetPort: metrics
+  selector:
+    {{- include "zta-iam.selectorLabels" . | nindent 4 }}

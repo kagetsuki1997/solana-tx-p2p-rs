@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  name: {{ include "zta-iam.fullname" . }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+      hosts:
+        - {{ .Values.ingress.domain }}
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        minProtocolVersion: {{ .Values.ingress.tls.minProtocolVersion }}
+        mode: SIMPLE
+        credentialName: {{ include "zta-iam.certificate.secretName" . }}
+      hosts:
+        - {{ .Values.ingress.domain }}
+    - port:
+        number: 50051
+        name: grpc
+        protocol: GRPC
+      hosts:
+        - {{ .Values.ingress.domain }}
+{{- end }}

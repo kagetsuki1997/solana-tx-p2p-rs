@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+# Uncomment for debugging purpose
+# set -o xtrace
+
+WORKSPACE_DIR=$(realpath "$(dirname "$0")"/../..)
+
+# shellcheck source=/dev-support/lib/logging
+. "$WORKSPACE_DIR"/dev-support/lib/logging
+
+sql_formatter() {
+  command sql-formatter --config "$WORKSPACE_DIR"/dev-support/sql-formatter.json "$@"
+}
+
+usage() {
+  cat >&2 <<EOF
+Usage: $(basename "$0") [--check] <SQL FILE...>
+EOF
+}
+
+check=false
+
+while :; do
+  if [ $# -eq 0 ]; then
+    usage
+    exit 1
+  fi
+
+  case $1 in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+
+  --check)
+    check=true
+    ;;
+
+  # -- means the end of the arguments; drop this, and break out of the while loop
+  --)
+    shift
+    break
+    ;;
+
+  -?*)
+    printf 'Unsupported option: %s\n' "$1" >&2
+    usage
+    exit 1
+    ;;
+
+  *)
+    break
+    ;;
+  esac
+
+  shift
+done
+
+if [ "$check" = true ]; then
+  for file in "$@"; do
+    echo checking "$file"
+    sql_formatter "$file" | diff -ur - "$file" --ignore-blank-lines
+  done
+else
+  for file in "$@"; do
+    echo formatting "$file"
+    sql_formatter --fix "$file"
+  done
+fi

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+# Uncomment for debugging purpose
+# set -o xtrace
+
+WORKSPACE_DIR=$(realpath "$(dirname "$0")"/../..)
+
+# shellcheck source=/dev-support/lib/logging
+. "$WORKSPACE_DIR"/dev-support/lib/logging
+# shellcheck source=/dev-support/lib/toolchain
+. "$WORKSPACE_DIR"/dev-support/lib/toolchain
+
+if [ $# -gt 0 ] && [ "$1" = "build-all" ]; then
+  shift
+  unset CARGO
+fi
+
+debug 'version:'
+rustc --version
+cargo --version
+
+debug "Run \`cargo build\`"
+cargo build "${CARGO_ARGS[@]}" "$@"

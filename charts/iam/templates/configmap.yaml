@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  name: {{ include "zta-iam.fullname" . }}
+data:
+  ZTA_IAM_GRPC_ADDRESS: "::"
+  ZTA_IAM_GRPC_PORT: "50051"
+  ZTA_IAM_METRICS_ADDRESS: "::"
+  ZTA_IAM_METRICS_PORT: "9090"
+  ZTA_IAM_API_ADDRESS: "::"
+  ZTA_IAM_API_PORT: "8080"
+  ZTA_IAM_AUTH_PUBLIC_KEY: {{ quote .Values.keycloak.authPublicKey }}
+  ZTA_IAM_KEYCLOAK_ENDPOINT: {{ quote .Values.keycloak.endpoint }}
+  ZTA_IAM_KEYCLOAK_REALM: {{ quote .Values.keycloak.realm }}
+  ZTA_IAM_KEYCLOAK_CLIENT_ID: {{ quote .Values.keycloak.clientId }}
+  ZTA_IAM_TLS_CERT: {{ quote .Values.tlsCert }}
+  ZTA_IAM_TLS_CA: {{ quote .Values.tlsCa }}
+  ZTA_IAM_CLIENT_PUBLIC_KEY_MAP: {{ quote .Values.clientPublicKeyMap }}
+  ZTA_IAM_CARD_IDP_ENDPOINT: {{ quote .Values.cardIdp.endpoint }}
+  ZTA_IAM_CARD_IDP_NAME: {{ quote .Values.cardIdp.name }}
+  ZTA_IAM_CARD_IDP_CLIENT_ID: {{ quote .Values.cardIdp.clientId }}
+  ZTA_IAM_CARD_IDP_AUTH_PUBLIC_KEY: {{ quote .Values.cardIdp.authPublicKey }}
+  {{- with .Values.logLevel }}
+  RUST_LOG: {{ quote . }}
+  {{- end }}

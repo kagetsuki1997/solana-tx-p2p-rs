@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package p2p;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message Peer {
+  string id = 1;
+  bool is_signer = 2;
+  bool is_leader = 3;
+}
+
+message Peers {
+  repeated Peer peers = 1;
+}

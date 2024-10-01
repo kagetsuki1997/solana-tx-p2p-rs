@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "zta-iam.fullname" . }}-test-connection"
+  labels:
+    {{- include "zta-iam.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command:
+        - wget
+      args:
+        - {{ printf "%s/startz" (include "zta-iam.metricsEndpoint" .) }}
+  restartPolicy: Never

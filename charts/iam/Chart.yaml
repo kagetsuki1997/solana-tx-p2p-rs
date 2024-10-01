@@ -1,0 +1,9 @@
+apiVersion: v2
+name: zta-iam
+description: A Helm chart for Zero Trust Architecture IAM
+type: application
+version: 0.1.0
+appVersion: 0.0.1
+maintainers:
+  - name: Chelpis
+    url: https://www.chelpis.com
