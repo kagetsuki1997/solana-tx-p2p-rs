@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package p2p.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "p2p/p2p.proto";
+
+service PeerService {
+  rpc DiscoveryPeers(google.protobuf.Empty) returns (Peers);
+  rpc ListSignedMessages(google.protobuf.Empty) returns (Transactions);
+  rpc ListRelayedTransactions(google.protobuf.Empty) returns (RelayTransactions);
+}
+
+message Peers {
+  repeated string peers = 1;
+}
+
+message RelayTransactions {
+  repeated string signatures = 1;
+}

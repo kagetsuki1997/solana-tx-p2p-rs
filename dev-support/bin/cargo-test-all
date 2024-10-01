@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+# Uncomment for debugging purpose
+# set -o xtrace
+
+WORKSPACE_DIR=$(realpath "$(dirname "$0")"/../..)
+
+# shellcheck source=/dev-support/lib/logging
+. "$WORKSPACE_DIR"/dev-support/lib/logging
+# shellcheck source=/dev-support/lib/toolchain
+. "$WORKSPACE_DIR"/dev-support/lib/toolchain
+
+if [ $# -gt 0 ] && [ "$1" = "test-all" ]; then
+  shift
+  unset CARGO
+fi
+
+debug 'ensure toolchain'
+rustup toolchain install --profile minimal -- $TOOLCHAIN
+
+debug 'version:'
+rustup run $TOOLCHAIN rustc --version
+cargo +$TOOLCHAIN --version
+cargo +$TOOLCHAIN nextest --version
+
+debug "Run \`cargo test\`"
+cargo nextest run "${CARGO_ARGS[@]}" "$@"

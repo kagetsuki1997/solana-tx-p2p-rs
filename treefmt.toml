@@ -1,0 +1,58 @@
+[formatter.hclfmt]
+command  = "hclfmt"
+options  = ["-w"]
+includes = ["*.hcl"]
+
+[formatter.hclfmt-check]
+command  = "hclfmt"
+options  = ["-check", "-require-no-change"]
+includes = ["*.hcl"]
+
+[formatter.clang-format]
+command = "clang-format"
+options = ["-i", "--style=file", "--Werror", "--verbose"]
+includes = [
+  # C
+  "*.c",
+  "*.h",
+  # C++
+  "*.cc",
+  "*.cpp",
+  "*.cxx",
+  "*.hh",
+  "*.hpp",
+  "*.hxx",
+  "*.inl",
+  "*.ino",
+  # Protobuf
+  "*.proto",
+]
+
+[formatter.clang-format-check]
+command = "clang-format"
+options = ["--dry-run", "--style=file", "--Werror", "--verbose"]
+includes = [
+  # C
+  "*.c",
+  "*.h",
+  # C++
+  "*.cc",
+  "*.cpp",
+  "*.cxx",
+  "*.hh",
+  "*.hpp",
+  "*.hxx",
+  "*.inl",
+  "*.ino",
+  # Protobuf
+  "*.proto",
+]
+
+[formatter.sql-formatter]
+command  = "dev-support/ci-bin/sql-formatter"
+includes = ["*.sql"]
+
+[formatter.sql-formatter-check]
+command  = "dev-support/ci-bin/sql-formatter"
+options  = ["--check"]
+includes = ["*.sql"]

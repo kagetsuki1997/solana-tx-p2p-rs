@@ -1,0 +1,154 @@
+default_stages: [commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-yaml
+        exclude: charts/[^/]+/templates/.+.yaml
+      - id: end-of-file-fixer
+        exclude: '.*\.rs$'
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.4
+    hooks:
+      - id: codespell
+  - repo: local
+    hooks:
+      - id: commitlint
+        name: commitlint
+        description: Lint your commit messages
+        stages: [commit-msg]
+        language: system
+        entry: commitlint
+        args:
+          - --edit
+        always_run: true
+        pass_filenames: false
+      - id: nixpkgs-fmt
+        name: nixpkgs-fmt
+        description: Format nix code with nixpkgs-fmt
+        language: system
+        entry: nixpkgs-fmt
+        types:
+          - file
+          - nix
+      - id: deadnix
+        name: deadnix
+        description: Scan Nix files for dead code
+        language: system
+        entry: deadnix
+        args:
+          - --fail
+          - --hidden
+        types:
+          - file
+          - nix
+      - id: shfmt
+        name: shfmt
+        description: Rewrites all shell scripts to a canonical format
+        language: system
+        entry: shfmt
+        args:
+          - --write
+          - --list
+          - --indent
+          - "2"
+        types:
+          - file
+          - shell
+      - id: shellcheck
+        name: shellcheck
+        description: Static analysis tool for shell scripts
+        language: system
+        entry: shellcheck
+        args:
+          - --check-sourced
+          - --shell
+          - bash
+        types:
+          - file
+          - shell
+      - id: prettier
+        name: prettier
+        language: system
+        entry: prettier
+        args:
+          - --check
+          - --ignore-unknown
+      - id: taplo
+        name: taplo
+        language: system
+        entry: taplo
+        args:
+          - format
+        types:
+          - file
+          - toml
+      - id: hclfmt
+        name: hclfmt
+        language: system
+        entry: treefmt
+        args:
+          - --allow-missing-formatter
+          - --formatters
+          - hclfmt
+        types:
+          - file
+          - hcl
+      - id: clang-format
+        name: clang-format
+        description: Format C/C++/C#/Objective-C/Protobuf code
+        language: system
+        entry: treefmt
+        args:
+          - --allow-missing-formatter
+          - --formatters
+          - clang-format
+        types:
+          - file
+        "types_or":
+          - c
+          - c#
+          - c++
+          - objective-c
+          - proto
+      - id: sql-formatter
+        name: sql-formatter
+        language: system
+        entry: treefmt
+        args:
+          - --allow-missing-formatter
+          - --formatters
+          - sql-formatter
+        types:
+          - file
+          - sql
+      - id: terraform
+        name: terraform
+        language: system
+        entry: terraform
+        args:
+          - fmt
+          - --write
+        types:
+          - file
+          - terraform
+      - id: rustfmt
+        name: rustfmt
+        description: Formats Rsut code
+        language: system
+        entry: ./dev-support/bin/cargo-fmt-all
+        types:
+          - rust
+        pass_filenames: false

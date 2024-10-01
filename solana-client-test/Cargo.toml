@@ -1,0 +1,20 @@
+[package]
+name                    = "solana-client-test"
+version.workspace       = true
+authors.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+documentation.workspace = true
+readme.workspace        = true
+homepage.workspace      = true
+repository.workspace    = true
+license-file.workspace  = true
+publish.workspace       = true
+
+[dependencies]
+solana-client = { workspace = true }
+solana-sdk    = { workspace = true }
+tokio         = { workspace = true }
+
+[lints]
+workspace = true

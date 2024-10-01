@@ -1,0 +1,8 @@
+[advisories]
+ignore = [
+  # Marvin Attack of `rsa` crate
+  # https://github.com/RustCrypto/RSA/issues/19
+  "RUSTSEC-2023-0071",
+  # FIXME: RUSTSEC-2024-0370
+  "RUSTSEC-2024-0370",
+]

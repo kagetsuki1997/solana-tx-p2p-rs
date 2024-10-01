@@ -1,0 +1,5 @@
+[codespell]
+skip = .direnv,.git,target
+ignore-words = ./dev-support/codespell-ignore-words
+check-filenames =
+check-hidden =

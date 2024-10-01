@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+export TOOLCHAIN=nightly
+export CARGO_ARGS=(
+  --workspace
+  --all-targets
+)

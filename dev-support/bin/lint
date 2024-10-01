@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+# Uncomment for debugging purpose
+# set -o xtrace
+
+WORKSPACE_DIR=$(realpath "$(dirname "$0")"/../..)
+
+# shellcheck source=/dev-support/lib/logging
+. "$WORKSPACE_DIR"/dev-support/lib/logging
+
+info "Checking Nix format with \`nixpkgs-fmt\`"
+nixpkgs-fmt --check "$WORKSPACE_DIR"
+info "Checking Nix with \`deadnix\`"
+deadnix --fail --hidden "$WORKSPACE_DIR"
+
+info "Checking shell script format with \`shfmt\`"
+shfmt --diff --list --indent 2 "$WORKSPACE_DIR"
+info "Checking shell script with \`shellcheck\`"
+shfmt --find "$WORKSPACE_DIR" | xargs shellcheck --check-sourced --shell bash
+
+info "Checking CSS, GraphQL, HTML, JavaScript, Markdown and YAML format with \`prettier\`"
+prettier --ignore-path "$WORKSPACE_DIR"/.gitignore --ignore-path "$WORKSPACE_DIR"/.prettierignore --check "$WORKSPACE_DIR"
+
+info "Checking TOML format with \`taplo\`"
+taplo format --check --diff
+
+info "Checking HCL format with \`hclfmt\`"
+info "Checking C, C++ and Proto format with \`clang-format\`"
+info "Checking SQL format with \`sql-formatter\`"
+treefmt --allow-missing-formatter -C "$WORKSPACE_DIR" --formatters hclfmt-check --formatters clang-format-check --formatters sql-formatter-check
+
+info "Check common misspellings with \`codespell\`"
+codespell --config "$WORKSPACE_DIR"/.codespellrc "$WORKSPACE_DIR"
+
+info "Checking Terraform format with \`terraform\`"
+terraform fmt -check -recursive "$WORKSPACE_DIR"
+
+info "Checking Rust format with \`rustfmt\`"
+"$WORKSPACE_DIR"/dev-support/bin/cargo-fmt-all --check
