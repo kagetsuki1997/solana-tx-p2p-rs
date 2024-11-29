@@ -6,10 +6,10 @@ use snafu::ResultExt;
 use solana_sdk::pubkey::Pubkey;
 use solana_tx_p2p::{
     service::{
-        start_heartbeat_trigger, start_message_trigger, PeerWorker, RRElectionWorker,
-        RRElectionWorkerType, SolanaRelayer, SolanaSigner,
+        start_heartbeat_trigger, start_message_trigger, PeerWorker, PeerWorkerInboundEvent,
+        RRElectionWorker, RRElectionWorkerType, SolanaRelayer, SolanaSigner,
     },
-    SignalHandleBuilder,
+    ShutdownSignal, SignalHandleBuilder,
 };
 use tokio::{
     runtime::Runtime,
@@ -23,7 +23,7 @@ use crate::{
     tracing::init_tracing,
 };
 
-const APP_NAME: &str = "Transaction-relaying Peer-to-peer Node";
+const APP_NAME: &str = "Solana Transaction Peer-to-peer Node";
 
 #[derive(Args, Debug)]
 pub struct NodeCmd {
@@ -84,13 +84,6 @@ impl NodeCmd {
     // FIXME: clippy::significant_drop_tightening: clippy bug
     #[allow(clippy::significant_drop_tightening, clippy::too_many_lines)]
     pub fn run(self) -> Result<()> {
-        let Self {
-            message_duration,
-            relay_leader_duration,
-            signing_leader_duration,
-            heartbeat_duration,
-            solana,
-        } = self;
         Runtime::new().context(error::InitializeAsyncRuntimeSnafu)?.block_on(async {
             let _handle = init_tracing("debug,hyper=info,tower=info")?;
 
@@ -103,139 +96,11 @@ impl NodeCmd {
             let shutdown_signal_handler = SignalHandleBuilder::new(None).start();
             let shutdown_signal = shutdown_signal_handler.shutdown_signal();
 
-            let peers = Arc::new(RwLock::new(Vec::new()));
-            let signer = Arc::new(RwLock::new("signer".to_string()));
-            let relayer = Arc::new(RwLock::new("relayer".to_string()));
-
-            let (relayer_heartbeat_sender, relayer_heartbeat_receiver) = mpsc::channel(100);
-            let (relayer_election_worker_inbound_sender, relayer_election_worker_inbound_receiver) =
-                mpsc::channel(100);
-
-            let (signer_heartbeat_sender, signer_heartbeat_receiver) = mpsc::channel(100);
-            let (signer_election_worker_inbound_sender, signer_election_worker_inbound_receiver) =
-                mpsc::channel(100);
-
-            let (solana_signer_inbound_sender, solana_signer_inbound_receiver) = mpsc::channel(100);
-            let (solana_relayer_inbound_sender, solana_relayer_inbound_receiver) =
-                mpsc::channel(100);
-
-            tracing::info!("Initializing PeerWorker");
             let (stdin_sender, stdin_receiver) = mpsc::channel(10);
-            let peer_worker = PeerWorker::new(
-                peers.clone(),
-                relayer.clone(),
-                signer.clone(),
-                relayer_heartbeat_sender,
-                signer_heartbeat_sender,
-                relayer_election_worker_inbound_sender,
-                signer_election_worker_inbound_sender,
-                solana_relayer_inbound_sender,
-                solana_signer_inbound_sender,
-            );
-            let peer_worker_inbound_sender = peer_worker.peer_worker_inbound_sender();
-            let peer_id = peer_worker.peer_id();
-            let solana_keypair = Arc::new(peer_worker.solana_keypair());
 
-            join_set
-                .build_task()
-                .name("peer worker")
-                .spawn(peer_worker.start(shutdown_signal.clone(), stdin_receiver).err_into())
-                .context(error::SpawnSnafu { name: "peer worker".to_string() })?;
-
-            tracing::info!("Initializing relay leader election worker");
-            let relayer_election_worker = RRElectionWorker::new(
-                RRElectionWorkerType::Relayer,
-                relayer.clone(),
-                heartbeat_duration.saturating_add(Duration::from_secs(3)),
-                *relay_leader_duration,
-                relayer_election_worker_inbound_receiver,
-                relayer_heartbeat_receiver,
-                peers.clone(),
-                peer_worker_inbound_sender.clone(),
-            );
-            join_set
-                .build_task()
-                .name("relay leader election worker")
-                .spawn(relayer_election_worker.start(shutdown_signal.clone()).err_into())
-                .context(error::SpawnSnafu { name: "relay leader election worker".to_string() })?;
-
-            tracing::info!("Initializing signing leader election worker");
-            let signer_election_worker = RRElectionWorker::new(
-                RRElectionWorkerType::Signer,
-                signer.clone(),
-                heartbeat_duration.saturating_add(Duration::from_secs(3)),
-                *signing_leader_duration,
-                signer_election_worker_inbound_receiver,
-                signer_heartbeat_receiver,
-                peers.clone(),
-                peer_worker_inbound_sender.clone(),
-            );
-            join_set
-                .build_task()
-                .name("signing leader election worker")
-                .spawn(signer_election_worker.start(shutdown_signal.clone()).err_into())
-                .context(error::SpawnSnafu {
-                    name: "signing leader election worker".to_string(),
-                })?;
-
-            tracing::info!("Initializing SolanaSigner");
-            let solana_signer = SolanaSigner::new(
-                peer_id.clone(),
-                signer,
-                solana_keypair.clone(),
-                peer_worker_inbound_sender.clone(),
-                solana.program_id.clone(),
-                solana.rpc_url.clone(),
-                solana_signer_inbound_receiver,
-            );
-            join_set
-                .build_task()
-                .name("solana signer")
-                .spawn(solana_signer.start(shutdown_signal.clone()).err_into())
-                .context(error::SpawnSnafu { name: "solana signer".to_string() })?;
-
-            tracing::info!("Initializing SolanaRelayer");
-            let solana_relayer = SolanaRelayer::new(
-                peer_id,
-                relayer,
-                solana_keypair,
-                peer_worker_inbound_sender.clone(),
-                solana.rpc_url,
-                solana_relayer_inbound_receiver,
-            );
-            join_set
-                .build_task()
-                .name("solana relayer")
-                .spawn(solana_relayer.start(shutdown_signal.clone()).err_into())
-                .context(error::SpawnSnafu { name: "solana relayer".to_string() })?;
-
-            tracing::info!("Initializing message trigger task");
-            join_set
-                .build_task()
-                .name("message trigger")
-                .spawn(
-                    start_message_trigger(
-                        message_duration.as_deref().cloned(),
-                        shutdown_signal.clone(),
-                        peer_worker_inbound_sender.clone(),
-                    )
-                    .err_into(),
-                )
-                .context(error::SpawnSnafu { name: "message trigger".to_string() })?;
-
-            tracing::info!("Initializing heartbeat trigger task");
-            join_set
-                .build_task()
-                .name("heartbeat trigger")
-                .spawn(
-                    start_heartbeat_trigger(
-                        *self.heartbeat_duration,
-                        shutdown_signal,
-                        peer_worker_inbound_sender,
-                    )
-                    .err_into(),
-                )
-                .context(error::SpawnSnafu { name: "heartbeat trigger".to_string() })?;
+            tracing::info!("Initializing P2P Node");
+            let _peer_worker_inbound_sender =
+                self.start_node(&mut join_set, shutdown_signal, stdin_receiver)?;
 
             // stdin reader
             let rt = Runtime::new().context(error::InitializeAsyncRuntimeSnafu)?;
@@ -273,5 +138,152 @@ impl NodeCmd {
         tracing::info!("{APP_NAME} shutdown complete");
 
         Ok(())
+    }
+
+    pub fn start_node(
+        self,
+        join_set: &mut JoinSet<solana_tx_p2p::Result<()>>,
+        shutdown_signal: ShutdownSignal,
+        stdin_receiver: mpsc::Receiver<String>,
+    ) -> Result<mpsc::Sender<PeerWorkerInboundEvent>> {
+        let Self {
+            message_duration,
+            relay_leader_duration,
+            signing_leader_duration,
+            heartbeat_duration,
+            solana,
+        } = self;
+
+        let peers = Arc::new(RwLock::new(Vec::new()));
+        let signer = Arc::new(RwLock::new("signer".to_string()));
+        let relayer = Arc::new(RwLock::new("relayer".to_string()));
+
+        let (relayer_heartbeat_sender, relayer_heartbeat_receiver) = mpsc::channel(100);
+        let (relayer_election_worker_inbound_sender, relayer_election_worker_inbound_receiver) =
+            mpsc::channel(100);
+
+        let (signer_heartbeat_sender, signer_heartbeat_receiver) = mpsc::channel(100);
+        let (signer_election_worker_inbound_sender, signer_election_worker_inbound_receiver) =
+            mpsc::channel(100);
+
+        let (solana_signer_inbound_sender, solana_signer_inbound_receiver) = mpsc::channel(100);
+        let (solana_relayer_inbound_sender, solana_relayer_inbound_receiver) = mpsc::channel(100);
+
+        tracing::info!("Initializing PeerWorker");
+        let peer_worker = PeerWorker::new(
+            peers.clone(),
+            relayer.clone(),
+            signer.clone(),
+            relayer_heartbeat_sender,
+            signer_heartbeat_sender,
+            relayer_election_worker_inbound_sender,
+            signer_election_worker_inbound_sender,
+            solana_relayer_inbound_sender,
+            solana_signer_inbound_sender,
+        );
+        let peer_worker_inbound_sender = peer_worker.peer_worker_inbound_sender();
+        let peer_id = peer_worker.peer_id();
+        let solana_keypair = Arc::new(peer_worker.solana_keypair());
+
+        join_set
+            .build_task()
+            .name("peer worker")
+            .spawn(peer_worker.start(shutdown_signal.clone(), stdin_receiver).err_into())
+            .context(error::SpawnSnafu { name: "peer worker".to_string() })?;
+
+        tracing::info!("Initializing relay leader election worker");
+        let relayer_election_worker = RRElectionWorker::new(
+            RRElectionWorkerType::Relayer,
+            relayer.clone(),
+            heartbeat_duration.saturating_add(Duration::from_secs(3)),
+            *relay_leader_duration,
+            relayer_election_worker_inbound_receiver,
+            relayer_heartbeat_receiver,
+            peers.clone(),
+            peer_worker_inbound_sender.clone(),
+        );
+        join_set
+            .build_task()
+            .name("relay leader election worker")
+            .spawn(relayer_election_worker.start(shutdown_signal.clone()).err_into())
+            .context(error::SpawnSnafu { name: "relay leader election worker".to_string() })?;
+
+        tracing::info!("Initializing signing leader election worker");
+        let signer_election_worker = RRElectionWorker::new(
+            RRElectionWorkerType::Signer,
+            signer.clone(),
+            heartbeat_duration.saturating_add(Duration::from_secs(3)),
+            *signing_leader_duration,
+            signer_election_worker_inbound_receiver,
+            signer_heartbeat_receiver,
+            peers.clone(),
+            peer_worker_inbound_sender.clone(),
+        );
+        join_set
+            .build_task()
+            .name("signing leader election worker")
+            .spawn(signer_election_worker.start(shutdown_signal.clone()).err_into())
+            .context(error::SpawnSnafu { name: "signing leader election worker".to_string() })?;
+
+        tracing::info!("Initializing SolanaSigner");
+        let solana_signer = SolanaSigner::new(
+            peer_id.clone(),
+            signer,
+            solana_keypair.clone(),
+            peer_worker_inbound_sender.clone(),
+            solana.program_id.clone(),
+            solana.rpc_url.clone(),
+            solana_signer_inbound_receiver,
+        );
+        join_set
+            .build_task()
+            .name("solana signer")
+            .spawn(solana_signer.start(shutdown_signal.clone()).err_into())
+            .context(error::SpawnSnafu { name: "solana signer".to_string() })?;
+
+        tracing::info!("Initializing SolanaRelayer");
+        let solana_relayer = SolanaRelayer::new(
+            peer_id,
+            relayer,
+            solana_keypair,
+            peer_worker_inbound_sender.clone(),
+            solana.rpc_url,
+            solana_relayer_inbound_receiver,
+        );
+        join_set
+            .build_task()
+            .name("solana relayer")
+            .spawn(solana_relayer.start(shutdown_signal.clone()).err_into())
+            .context(error::SpawnSnafu { name: "solana relayer".to_string() })?;
+
+        tracing::info!("Initializing message trigger task");
+        join_set
+            .build_task()
+            .name("message trigger")
+            .spawn(
+                start_message_trigger(
+                    message_duration.as_deref().cloned(),
+                    shutdown_signal.clone(),
+                    peer_worker_inbound_sender.clone(),
+                )
+                .err_into(),
+            )
+            .context(error::SpawnSnafu { name: "message trigger".to_string() })?;
+
+        tracing::info!("Initializing heartbeat trigger task");
+        join_set
+            .build_task()
+            .name("heartbeat trigger")
+            .spawn(
+                start_heartbeat_trigger(
+                    *self.heartbeat_duration,
+                    shutdown_signal,
+                    peer_worker_inbound_sender.clone(),
+                )
+                .err_into(),
+            )
+            .context(error::SpawnSnafu { name: "heartbeat trigger".to_string() })?;
+
+        Ok(peer_worker_inbound_sender)
     }
 }

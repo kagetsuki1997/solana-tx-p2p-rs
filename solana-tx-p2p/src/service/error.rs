@@ -6,9 +6,14 @@ use axum::{
 };
 use http::{header, StatusCode};
 use snafu::{Backtrace, Snafu};
+use tokio::sync::{
+    mpsc::error::SendError as MpscSendError, oneshot::error::RecvError as OneshotRecvError,
+};
 use tonic::Status;
 
-use crate::{error::fmt_backtrace_with_source, web::ErrorResponse};
+use crate::{
+    error::fmt_backtrace_with_source, service::PeerWorkerInboundEvent, web::ErrorResponse,
+};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -22,10 +27,29 @@ pub enum Error {
     SwarmWithTcp { source: libp2p::noise::Error, backtrace: Backtrace },
 
     #[snafu(display(
-        "Can not spawn async task `{name}`{}",
+        "Fail to send peer worker instruction `{instruction}`{}",
         fmt_backtrace_with_source(backtrace, source)
     ))]
-    Spawn { name: Cow<'static, str>, source: std::io::Error, backtrace: Backtrace },
+    SendPeerWorkerInstruction {
+        instruction: Cow<'static, str>,
+        source: MpscSendError<PeerWorkerInboundEvent>,
+        backtrace: Backtrace,
+    },
+
+    #[snafu(display("Fail to list peers`{}", fmt_backtrace_with_source(backtrace, source)))]
+    ListPeers { source: OneshotRecvError, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Fail to list signed messages`{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    ListSignedMessages { source: OneshotRecvError, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Fail to list relayed transactions`{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    ListRelayedTransactions { source: OneshotRecvError, backtrace: Backtrace },
 }
 
 impl IntoResponse for Error {

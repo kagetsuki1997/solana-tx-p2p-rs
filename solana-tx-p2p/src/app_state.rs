@@ -1,6 +1,7 @@
 use axum::extract::FromRef;
+use tokio::sync::mpsc;
 
-use crate::service::{DefaultPeerService, PeerService};
+use crate::service::{DefaultPeerService, PeerService, PeerWorkerInboundEvent};
 
 pub trait AppState: Clone + Send + Sync + 'static {
     type PeerService: PeerService + FromRef<Self> + Send + Sync + Clone;
@@ -15,7 +16,9 @@ pub struct DefaultAppState {
 
 impl DefaultAppState {
     #[must_use]
-    pub fn new() -> Self { Self { peer_service: DefaultPeerService::new() } }
+    pub fn new(peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>) -> Self {
+        Self { peer_service: DefaultPeerService::new(peer_worker_inbound_sender) }
+    }
 }
 
 impl AppState for DefaultAppState {

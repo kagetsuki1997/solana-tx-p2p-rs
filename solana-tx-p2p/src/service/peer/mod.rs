@@ -3,5 +3,5 @@ mod worker;
 
 pub use self::{
     default::DefaultPeerService,
-    worker::{PeerWorker, PeerWorkerInboundEvent},
+    worker::{PeerWorker, PeerWorkerInboundEvent, PeerWorkerInstruction},
 };

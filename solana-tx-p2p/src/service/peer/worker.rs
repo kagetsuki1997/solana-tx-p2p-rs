@@ -14,7 +14,7 @@ use libp2p::{
 };
 use snafu::ResultExt;
 use solana_sdk::{signature::Keypair as SolanaKeypair, transaction::Transaction};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{mpsc, oneshot, RwLock};
 
 use crate::{
     service::{
@@ -49,6 +49,7 @@ enum Action {
     Stop,
 }
 
+#[derive(Debug)]
 pub enum PeerWorkerInboundEvent {
     MessageTrigger,
     HeartbeatTrigger,
@@ -56,6 +57,14 @@ pub enum PeerWorkerInboundEvent {
     SignerSyncInfo(LeaderSyncInfo),
     Transaction(Transaction),
     RelayedTransaction(String),
+    Instruction(PeerWorkerInstruction),
+}
+
+#[derive(Debug)]
+pub enum PeerWorkerInstruction {
+    ListPeers(oneshot::Sender<Vec<String>>),
+    ListSignedMessages(oneshot::Sender<Vec<Transaction>>),
+    ListRelayedTransactions(oneshot::Sender<Vec<String>>),
 }
 
 #[derive(NetworkBehaviour)]
@@ -272,6 +281,21 @@ impl PeerWorker {
                     Some(PeerWorkerInboundEvent::RelayedTransaction(transaction)) => {
                         self.relayed_transactions.write().await.push(transaction);
                     }
+                    Some(PeerWorkerInboundEvent::Instruction(instruction)) => match instruction {
+                        PeerWorkerInstruction::ListPeers(sender) => {
+                            let peers = self.peers.read().await.clone();
+                            drop(sender.send(peers));
+                        }
+                        PeerWorkerInstruction::ListSignedMessages(sender) => {
+                            let signed_messages = self.signed_messages.read().await.clone();
+                            drop(sender.send(signed_messages));
+                        }
+                        PeerWorkerInstruction::ListRelayedTransactions(sender) => {
+                            let relayed_transactions =
+                                self.relayed_transactions.read().await.clone();
+                            drop(sender.send(relayed_transactions));
+                        }
+                    },
                 },
                 Action::Swarm(swarm_event) => match swarm_event {
                     SwarmEvent::Behaviour(PeerBehaviourEvent::Floobsub(

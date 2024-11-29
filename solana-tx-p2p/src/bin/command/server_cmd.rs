@@ -7,15 +7,16 @@ use clap::Args;
 use futures_util::future::TryFutureExt;
 use snafu::ResultExt;
 use solana_tx_p2p::{grpc, metrics, web, DefaultAppState, SignalHandleBuilder};
-use tokio::{runtime::Runtime, task::JoinSet};
+use tokio::{runtime::Runtime, sync::mpsc, task::JoinSet};
 
 use crate::{
+    command::NodeCmd,
     env, error,
     error::{Error, Result},
     tracing::init_tracing,
 };
 
-const APP_NAME: &str = "Transaction-relaying Peer-to-peer Node Server";
+const APP_NAME: &str = "Solana Transaction Peer-to-peer Server";
 
 #[derive(Args, Debug)]
 pub struct ApiConfig {
@@ -123,14 +124,18 @@ pub struct ServerCmd {
 
     #[command(flatten)]
     pub tls: TlsConfig,
+
+    #[command(flatten)]
+    pub node: NodeCmd,
 }
 
+// TODO: use child process and ipc for node
 impl ServerCmd {
     /// Run the server
     // FIXME: clippy::significant_drop_tightening: clippy bug
     #[allow(clippy::significant_drop_tightening, clippy::too_many_lines)]
     pub fn run(self) -> Result<()> {
-        let Self { api, grpc, metrics, tls } = self;
+        let Self { api, grpc, metrics, tls, node } = self;
         Runtime::new().context(error::InitializeAsyncRuntimeSnafu)?.block_on(async {
             let _handle = init_tracing("debug,hyper=info,tower=info")?;
 
@@ -143,8 +148,13 @@ impl ServerCmd {
             let shutdown_signal_handler = SignalHandleBuilder::new(None).start();
             let shutdown_signal = shutdown_signal_handler.shutdown_signal();
 
+            tracing::info!("Initializing P2P Node");
+            let (_stdin_sender, dummy_stdin_receiver) = mpsc::channel(10);
+            let peer_worker_inbound_receiver =
+                node.start_node(&mut join_set, shutdown_signal.clone(), dummy_stdin_receiver)?;
+
             tracing::info!("Initializing app state");
-            let app_state = DefaultAppState::new();
+            let app_state = DefaultAppState::new(peer_worker_inbound_receiver);
 
             tracing::info!("Initializing metrics server");
             join_set

@@ -12,7 +12,7 @@ use tokio::{sync::mpsc, time};
 
 pub use self::{
     error::Result,
-    peer::{DefaultPeerService, PeerWorker, PeerWorkerInboundEvent},
+    peer::{DefaultPeerService, PeerWorker, PeerWorkerInboundEvent, PeerWorkerInstruction},
     round_robin_election::{RRElectionWorker, RRElectionWorkerType},
     solana::{RelayerInboundEvent, SignerInboundEvent, SolanaRelayer, SolanaSigner},
 };
