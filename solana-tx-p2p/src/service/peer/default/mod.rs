@@ -15,7 +15,7 @@ pub struct DefaultPeerService {
 impl DefaultPeerService {
     #[inline]
     #[must_use]
-    pub fn new(peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>) -> Self {
+    pub const fn new(peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>) -> Self {
         Self { peer_worker_inbound_sender }
     }
 }

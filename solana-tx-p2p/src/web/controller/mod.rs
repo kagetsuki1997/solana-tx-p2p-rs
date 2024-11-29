@@ -9,18 +9,17 @@ use utoipa::OpenApi;
 
 use crate::{
     app_state::AppState,
-    error::Result,
     model::{
         CompiledInstructionForUtoipa, MessageForUtoipa, MessageHeaderForUtoipa,
         TransactionForUtoipa,
     },
 };
 
-pub fn apis<S>(_app_state: &S) -> Result<Router>
+pub fn apis<S>(_app_state: &S) -> Router
 where
     S: AppState + Clone + Send + Sync + 'static,
 {
-    Ok(Router::new().nest(
+    Router::new().nest(
         "/api",
         Router::new().merge(self::peer::v1::<S>()).layer(
             TraceLayer::new_for_http()
@@ -40,7 +39,7 @@ where
                     }
                 }),
         ),
-    ))
+    )
 }
 
 #[derive(OpenApi)]

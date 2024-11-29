@@ -16,7 +16,7 @@ pub struct DefaultAppState {
 
 impl DefaultAppState {
     #[must_use]
-    pub fn new(peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>) -> Self {
+    pub const fn new(peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>) -> Self {
         Self { peer_service: DefaultPeerService::new(peer_worker_inbound_sender) }
     }
 }

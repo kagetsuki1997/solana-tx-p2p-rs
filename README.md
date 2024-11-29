@@ -1,5 +1,22 @@
 # Solana Transactions with P2P Network
 
+## Features
+
+- Node
+  - P2P Network with `libp2p`
+  - Elect Solana Transaction Signer in round-robin manner
+  - Elect Solana Transaction Relayer in round-robin manner
+  - Handle peer joining and leaving
+  - Send transaction to Solana
+  - Stdin
+  - `ls p` list peers
+  - `ls s` list signed messages
+  - `ls t` list relayed messages
+- Server
+  - [gRPC](proto/p2p)
+  - [RESTful API](docs/openapi)
+  - Run Node at the same time
+
 ## Project
 
 ### Project Structure
@@ -60,7 +77,7 @@ Run node
 Run node with http server
 
 ```
-cargo run --bin solana-tx-p2p server
+./solana-tx-p2p-server.sh
 ```
 
 ## Contributing

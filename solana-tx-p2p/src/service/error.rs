@@ -61,13 +61,11 @@ impl IntoResponse for Error {
             ))
         };
 
-        match self {
-            _ => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(body)
-                .expect("It should be a valid `Response`"),
-        }
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body)
+            .expect("It should be a valid `Response`")
     }
 }
 

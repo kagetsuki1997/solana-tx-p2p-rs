@@ -1,7 +1,16 @@
 [package]
-name    = "solana-hello-world"
-version = "0.1.0"
-edition = "2021"
+name          = "solana-hello-world"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+description   = "Solana Hello World Program"
+documentation = { workspace = true }
+readme        = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+license-file  = { workspace = true }
+publish       = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]

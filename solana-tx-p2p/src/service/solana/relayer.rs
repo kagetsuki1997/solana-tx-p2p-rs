@@ -36,7 +36,7 @@ pub struct SolanaRelayer {
 
 impl SolanaRelayer {
     #[must_use]
-    pub fn new(
+    pub const fn new(
         peer_id: PeerId,
         relayer: Arc<RwLock<String>>,
         keypair: Arc<SolanaKeypair>,
@@ -47,6 +47,10 @@ impl SolanaRelayer {
         Self { peer_id, relayer, keypair, peer_worker_inbound_sender, rpc_url, inbound_receiver }
     }
 
+    /// # Panics
+    ///
+    /// * fail to request airdrop
+    /// * fail to confirm airdrop transaction
     pub async fn start(mut self, mut shutdown_signal: ShutdownSignal) -> Result<()> {
         // Connect to the Solana devnet
         let client = RpcClient::new_with_commitment(self.rpc_url, CommitmentConfig::confirmed());

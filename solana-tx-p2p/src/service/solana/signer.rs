@@ -38,7 +38,7 @@ pub struct SolanaSigner {
 
 impl SolanaSigner {
     #[must_use]
-    pub fn new(
+    pub const fn new(
         peer_id: PeerId,
         signer: Arc<RwLock<String>>,
         keypair: Arc<SolanaKeypair>,
@@ -58,6 +58,10 @@ impl SolanaSigner {
         }
     }
 
+    /// # Panics
+    ///
+    /// * fail to request airdrop
+    /// * fail to confirm airdrop transaction
     pub async fn start(mut self, mut shutdown_signal: ShutdownSignal) -> Result<()> {
         // Connect to the Solana devnet
         let client = RpcClient::new_with_commitment(self.rpc_url, CommitmentConfig::confirmed());
@@ -99,10 +103,13 @@ impl SolanaSigner {
                     }
                     Some(SignerInboundEvent::RawMessage(raw_message)) => {
                         if *self.signer.read().await == self.peer_id.to_string() {
+                            let message = String::from_utf8_lossy(&raw_message);
+                            let data = format!("{message}, Signer: {}", self.peer_id);
+
                             // Create the instruction
                             let instruction = Instruction::new_with_borsh(
-                                self.program_id.clone(),
-                                &raw_message.to_vec(),
+                                self.program_id,
+                                &data,
                                 vec![], // No accounts needed
                             );
 

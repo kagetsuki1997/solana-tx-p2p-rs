@@ -10,7 +10,9 @@
     clippy::too_many_lines,
     clippy::trivially_copy_pass_by_ref,
     clippy::use_self,
-    clippy::wildcard_imports
+    clippy::wildcard_imports,
+    clippy::struct_field_names,
+    clippy::used_underscore_items
 )]
 
 pub mod peer;

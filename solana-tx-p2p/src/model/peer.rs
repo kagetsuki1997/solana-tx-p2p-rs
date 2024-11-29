@@ -49,7 +49,7 @@ impl From<Transaction> for proto::Transaction {
     }
 }
 
-/// Workaround for OpenAPI docs
+/// Workaround for `OpenAPI` docs
 #[derive(ToSchema)]
 #[schema(as = Transaction)]
 pub struct TransactionForUtoipa {
@@ -69,7 +69,7 @@ pub struct TransactionForUtoipa {
     pub message: MessageForUtoipa,
 }
 
-/// Workaround for OpenAPI docs
+/// Workaround for `OpenAPI` docs
 #[derive(ToSchema)]
 #[schema(as = Message)]
 pub struct MessageForUtoipa {
@@ -90,7 +90,7 @@ pub struct MessageForUtoipa {
     pub instructions: Vec<CompiledInstructionForUtoipa>,
 }
 
-/// Workaround for OpenAPI docs
+/// Workaround for `OpenAPI` docs
 #[derive(ToSchema)]
 #[schema(as = MessageHeader)]
 pub struct MessageHeaderForUtoipa {
@@ -109,7 +109,7 @@ pub struct MessageHeaderForUtoipa {
     pub num_readonly_unsigned_accounts: u8,
 }
 
-/// Workaround for OpenAPI docs
+/// Workaround for `OpenAPI` docs
 #[derive(ToSchema)]
 #[schema(as = CompiledInstruction)]
 pub struct CompiledInstructionForUtoipa {

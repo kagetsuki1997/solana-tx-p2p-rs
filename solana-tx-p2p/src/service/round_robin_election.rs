@@ -61,7 +61,8 @@ pub struct RRElectionWorker {
 
 impl RRElectionWorker {
     #[must_use]
-    pub fn new(
+    #[allow(clippy::too_many_arguments)]
+    pub const fn new(
         r#type: RRElectionWorkerType,
         current_leader: Arc<RwLock<String>>,
         heartbeat_timeout: Duration,
@@ -74,11 +75,11 @@ impl RRElectionWorker {
         Self {
             r#type,
             current_leader,
+            peers,
             heartbeat_timeout,
             round_interval,
             inbound_receiver,
             leader_heartbeat_receiver,
-            peers,
             peer_worker_inbound_sender,
         }
     }
@@ -90,7 +91,7 @@ impl RRElectionWorker {
             let action = tokio::select! {
                 () = shutdown_signal.wait() => Action::Stop,
                 result = self.inbound_receiver.recv() => Action::Inbound(result),
-                _ = time::sleep_until(next_round_time) => Action::NextRound,
+                () = time::sleep_until(next_round_time) => Action::NextRound,
                 result = timeout(self.heartbeat_timeout, self.leader_heartbeat_receiver.recv()) => Action::LeaderHeartbeat(result),
             };
 
@@ -99,7 +100,7 @@ impl RRElectionWorker {
                 Action::LeaderHeartbeat(result) => match result {
                     Err(_) => {
                         tracing::warn!(
-                            "Receive leader heatbeat timeout, elect next {} leader",
+                            "Receive leader heartbeat timeout, elect next {} leader",
                             self.r#type
                         );
                         next_round_time = self.elect_next_leader().await;
@@ -142,7 +143,8 @@ impl RRElectionWorker {
         Ok(())
     }
 
-    async fn elect_next_leader(&mut self) -> Instant {
+    #[allow(clippy::significant_drop_tightening)]
+    async fn elect_next_leader(&self) -> Instant {
         let next_round_time = Instant::now() + self.round_interval;
         let next_round_datetime = Utc::now() + self.round_interval;
         let peers = self.peers.read().await;
@@ -154,7 +156,7 @@ impl RRElectionWorker {
         for (idx, peer) in peers.iter().enumerate() {
             if *peer == *current_leader {
                 let idx = (idx + 1) % peers_len;
-                *current_leader = peers[idx].clone();
+                current_leader.clone_from(&peers[idx]);
                 found = true;
                 break;
             }
@@ -162,7 +164,7 @@ impl RRElectionWorker {
 
         // elect first peer as leader if current leader not found
         if !found {
-            *current_leader = peers.first().expect("Peers must not be empty").clone();
+            current_leader.clone_from(peers.first().expect("Peers must not be empty"));
         }
 
         tracing::info!(

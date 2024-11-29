@@ -114,6 +114,7 @@ pub struct PeerWorker {
 
 impl PeerWorker {
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peers: Arc<RwLock<Vec<String>>>,
         relayer: Arc<RwLock<String>>,
@@ -150,8 +151,11 @@ impl PeerWorker {
     }
 
     #[must_use]
-    pub fn peer_id(&self) -> PeerId { self.peer_id.clone() }
+    pub const fn peer_id(&self) -> PeerId { self.peer_id }
 
+    /// # Panics
+    ///
+    /// * fail to convert key
     #[must_use]
     pub fn solana_keypair(&self) -> SolanaKeypair {
         let ed25519_key = self.key.clone().try_into_ed25519().expect("must be ed25519 keypair");
@@ -175,6 +179,11 @@ impl PeerWorker {
     /// # Errors
     ///
     /// return error when fail to create swarm
+    ///
+    /// # Panics
+    ///
+    /// * fail to serialize `LeaderSyncInfo`
+    #[allow(clippy::too_many_lines)]
     pub async fn start(
         mut self,
         mut shutdown_signal: ShutdownSignal,
@@ -186,7 +195,7 @@ impl PeerWorker {
             self.peers.write().await.push(self.peer_id.to_string());
         }
 
-        let mut swarm = start_swarm(self.peer_id.clone(), &*TOPICS, self.key.clone()).await?;
+        let mut swarm = start_swarm(self.peer_id, &TOPICS, self.key.clone())?;
 
         loop {
             let action = {
@@ -202,7 +211,7 @@ impl PeerWorker {
                 Action::Input(line) => {
                     if let Some(line) = line {
                         match line.as_str() {
-                            cmd if cmd.starts_with("ls p") => handle_list_peers(&mut swarm).await,
+                            cmd if cmd.starts_with("ls p") => handle_list_peers(&swarm),
                             cmd if cmd.starts_with("ls s") => tracing::info!(
                                 "Signed Messages: {:?}",
                                 *self.signed_messages.read().await
@@ -301,7 +310,7 @@ impl PeerWorker {
                     SwarmEvent::Behaviour(PeerBehaviourEvent::Floobsub(
                         FloodsubEvent::Message(msg),
                     )) => {
-                        if let Err(()) = self.handle_message(&msg).await {
+                        if self.handle_message(&msg).await.is_err() {
                             break;
                         }
                     }
@@ -314,13 +323,11 @@ impl PeerWorker {
                         }
                         MdnsEvent::Expired(expired_list) => {
                             for (peer, _addr) in expired_list {
-                                if swarm
+                                if !swarm
                                     .behaviour_mut()
                                     .mdns
                                     .discovered_nodes()
-                                    .into_iter()
-                                    .find(|&node| *node == peer)
-                                    .is_none()
+                                    .any(|node| *node == peer)
                                 {
                                     swarm
                                         .behaviour_mut()
@@ -346,7 +353,7 @@ impl PeerWorker {
                         }
                     }
                     _ => {
-                        tracing::debug!("Unhandled event {swarm_event:?}")
+                        tracing::debug!("Unhandled event {swarm_event:?}");
                     }
                 },
                 Action::Stop => break,
@@ -358,11 +365,7 @@ impl PeerWorker {
         Ok(())
     }
 
-    async fn heartbeat_trigger(
-        &mut self,
-        swarm: &mut Swarm<PeerBehaviour>,
-        heartbeat_topic: Topic,
-    ) {
+    async fn heartbeat_trigger(&self, swarm: &mut Swarm<PeerBehaviour>, heartbeat_topic: Topic) {
         tracing::debug!("Heartbeat trigger {}", self.peer_id.clone());
         let message = format!("Heartbeat from {}", self.peer_id.clone());
         swarm.behaviour_mut().floodsub.publish(heartbeat_topic, message);
@@ -436,23 +439,25 @@ impl PeerWorker {
     }
 }
 
-async fn handle_list_peers(swarm: &mut Swarm<PeerBehaviour>) {
+fn handle_list_peers(swarm: &Swarm<PeerBehaviour>) {
     tracing::info!("Discovered Peers:");
     let nodes = swarm.behaviour().mdns.discovered_nodes();
     let mut unique_peers = HashSet::new();
     for peer in nodes {
         unique_peers.insert(peer);
     }
-    unique_peers.iter().for_each(|p| tracing::info!("{}", p));
+    for peer in unique_peers {
+        tracing::info!("{peer}");
+    }
 }
 
-async fn start_swarm(
+fn start_swarm(
     peer_id: PeerId,
     topics: &[Topic],
     key: identity::Keypair,
 ) -> Result<Swarm<PeerBehaviour>> {
     let mut behaviour = PeerBehaviour {
-        floodsub: Floodsub::new(peer_id.clone()),
+        floodsub: Floodsub::new(peer_id),
         mdns: Mdns::new(
             MdnsConfig {
                 ttl: Duration::from_secs(60),

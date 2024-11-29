@@ -47,7 +47,7 @@ async fn main() {
 
     // Send and confirm the transaction
     match client.send_and_confirm_transaction(&transaction) {
-        Ok(signature) => println!("Transaction Signature: {}", signature),
-        Err(err) => eprintln!("Error sending transaction: {}", err),
+        Ok(signature) => println!("Transaction Signature: {signature}"),
+        Err(err) => eprintln!("Error sending transaction: {err}"),
     }
 }

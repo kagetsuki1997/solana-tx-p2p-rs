@@ -4,7 +4,7 @@ version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
 rust-version  = { workspace = true }
-description   = "Transaction-relaying Peer-to-peer Node"
+description   = "Solana Transaction Peer-to-peer Node"
 documentation = { workspace = true }
 readme        = { workspace = true }
 homepage      = { workspace = true }
@@ -26,19 +26,12 @@ backtrace = ["snafu/backtrace"]
 
 [dependencies]
 opentelemetry = { workspace = true }
-opentelemetry-otlp = { workspace = true, features = [
-  # `opentelemetry_otlp::TonicExporterBuilder`
-  "grpc-tonic",
-  # `opentelemetry_otlp::OtlpTracePipeline`
-  "trace",
-] }
-opentelemetry-semantic-conventions = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = [
   # `opentelemetry::runtime::Tokio`
   "rt-tokio",
+  "trace",
 ] }
 tracing = { workspace = true }
-tracing-opentelemetry = { workspace = true }
 tracing-subscriber = { workspace = true, features = [
   # `tracing_subscriber::fmt::Layer::pretty`
   "ansi",
@@ -55,7 +48,6 @@ snafu = { workspace = true }
 base64     = { workspace = true }
 serde      = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = { workspace = true }
 
 async-trait  = { workspace = true }
 futures-util = { workspace = true }
@@ -72,14 +64,11 @@ axum = { workspace = true, features = [
   "tokio",
   "tower-log",
 ] }
-axum-extra = { workspace = true, features = ["query"] }
 http = { workspace = true }
 hyper = { workspace = true }
 prost = { workspace = true }
-reqwest = { workspace = true, features = ["default"] }
 tonic = { workspace = true, features = ["gzip", "tls"] }
 tonic-reflection = { workspace = true }
-tonic-types = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["trace"] }
 url = { workspace = true }
@@ -114,8 +103,7 @@ libp2p = { workspace = true, features = [
 ] }
 mimalloc = { workspace = true }
 rand = { workspace = true }
-utoipa = { workspace = true, features = ["axum_extras", "chrono", "uuid", "yaml"] }
-uuid = { workspace = true, features = ["serde"] }
+utoipa = { workspace = true, features = ["axum_extras", "chrono", "uuid", "yaml", "macros"] }
 
 [build-dependencies]
 tonic-build = { workspace = true, features = ["prost", "transport"] }

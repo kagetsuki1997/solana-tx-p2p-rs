@@ -23,7 +23,7 @@ pub async fn run<S>(
 where
     S: AppState + Clone + Send + Sync + 'static,
 {
-    let make_service = self::controller::apis::<S>(&app_state)?
+    let make_service = self::controller::apis::<S>(&app_state)
         .layer(Extension(app_state))
         .into_make_service_with_connect_info::<SocketAddr>();
 

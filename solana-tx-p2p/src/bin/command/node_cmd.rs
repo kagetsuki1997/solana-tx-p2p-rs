@@ -82,7 +82,7 @@ pub struct Solana {
 impl NodeCmd {
     /// Run the node
     // FIXME: clippy::significant_drop_tightening: clippy bug
-    #[allow(clippy::significant_drop_tightening, clippy::too_many_lines)]
+    #[allow(clippy::significant_drop_tightening)]
     pub fn run(self) -> Result<()> {
         Runtime::new().context(error::InitializeAsyncRuntimeSnafu)?.block_on(async {
             let _handle = init_tracing("debug,hyper=info,tower=info")?;
@@ -140,6 +140,7 @@ impl NodeCmd {
         Ok(())
     }
 
+    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
     pub fn start_node(
         self,
         join_set: &mut JoinSet<solana_tx_p2p::Result<()>>,
@@ -216,7 +217,7 @@ impl NodeCmd {
             *signing_leader_duration,
             signer_election_worker_inbound_receiver,
             signer_heartbeat_receiver,
-            peers.clone(),
+            peers,
             peer_worker_inbound_sender.clone(),
         );
         join_set
@@ -227,11 +228,11 @@ impl NodeCmd {
 
         tracing::info!("Initializing SolanaSigner");
         let solana_signer = SolanaSigner::new(
-            peer_id.clone(),
+            peer_id,
             signer,
             solana_keypair.clone(),
             peer_worker_inbound_sender.clone(),
-            solana.program_id.clone(),
+            solana.program_id,
             solana.rpc_url.clone(),
             solana_signer_inbound_receiver,
         );
@@ -262,7 +263,7 @@ impl NodeCmd {
             .name("message trigger")
             .spawn(
                 start_message_trigger(
-                    message_duration.as_deref().cloned(),
+                    message_duration.as_deref().copied(),
                     shutdown_signal.clone(),
                     peer_worker_inbound_sender.clone(),
                 )

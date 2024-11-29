@@ -1,7 +1,9 @@
 use axum::{Extension, Json};
 use solana_sdk::transaction::Transaction;
 
-use crate::{app_state::AppState, service::PeerService, web::error::Result};
+use crate::{
+    app_state::AppState, model::TransactionForUtoipa, service::PeerService, web::error::Result,
+};
 
 /// Discovery peers
 #[utoipa::path(
@@ -26,7 +28,7 @@ where
     post,
     path = "/api/v1/peer/signed-message",
     responses(
-        (status = 200, body = Vec<Transaction>),
+        (status = 200, body = Vec<TransactionForUtoipa>),
         (status = 500, description = "Internal server error")
     )
 )]
