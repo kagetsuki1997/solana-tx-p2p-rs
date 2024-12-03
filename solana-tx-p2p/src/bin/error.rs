@@ -40,4 +40,10 @@ pub enum Error {
         fmt_backtrace_with_source(backtrace, source)
     ))]
     ConnectGrpcChannel { endpoint: Uri, source: tonic::transport::Error, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Can not create solana client{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    CreateSolanaClient { source: solana_tx_p2p::service::error::Error, backtrace: Backtrace },
 }

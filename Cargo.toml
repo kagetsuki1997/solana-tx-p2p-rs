@@ -55,10 +55,11 @@ clap          = { version = "4", default-features = false, features = ["std"] }
 clap_complete = { version = "4", default-features = false }
 
 # solana
-solana-client       = { version = "2.1.1" }
-solana-program      = { version = "2.1.1" }
-solana-program-test = { version = "2.1.1" }
-solana-sdk          = { version = "2.1.1" }
+solana-client                          = { version = "2.1.1" }
+solana-program                         = { version = "2.1.1" }
+solana-program-test                    = { version = "2.1.1" }
+solana-sdk                             = { version = "2.1.1" }
+solana-transaction-status-client-types = { version = "2.1.1" }
 
 # misc
 bytes       = { version = "1.5", default-features = false }

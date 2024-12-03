@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, str::FromStr, sync::Arc, time::Duration};
 
 use lazy_static::lazy_static;
 use libp2p::{
@@ -13,10 +13,17 @@ use libp2p::{
     PeerId, SwarmBuilder,
 };
 use snafu::ResultExt;
-use solana_sdk::{signature::Keypair as SolanaKeypair, transaction::Transaction};
+use solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcTransactionConfig};
+use solana_sdk::{
+    commitment_config::CommitmentConfig,
+    signature::{Keypair as SolanaKeypair, Signature},
+    transaction::Transaction,
+};
+use solana_transaction_status_client_types::UiTransactionEncoding;
 use tokio::sync::{mpsc, oneshot, RwLock};
 
 use crate::{
+    model,
     service::{
         error,
         round_robin_election::{ElectionWorkerInboundEvent, LeaderSyncInfo},
@@ -65,6 +72,7 @@ pub enum PeerWorkerInstruction {
     ListPeers(oneshot::Sender<Vec<String>>),
     ListSignedMessages(oneshot::Sender<Vec<Transaction>>),
     ListRelayedTransactions(oneshot::Sender<Vec<String>>),
+    GetTransaction((String, oneshot::Sender<Result<model::TransactionDetail>>)),
 }
 
 #[derive(NetworkBehaviour)]
@@ -88,7 +96,6 @@ impl From<MdnsEvent> for PeerBehaviourEvent {
     fn from(event: MdnsEvent) -> Self { Self::Mdns(event) }
 }
 
-#[derive(Debug)]
 pub struct PeerWorker {
     key: identity::Keypair,
     peer_id: PeerId,
@@ -110,12 +117,15 @@ pub struct PeerWorker {
 
     signed_messages: Arc<RwLock<Vec<Transaction>>>,
     relayed_transactions: Arc<RwLock<Vec<String>>>,
+
+    solana_client: Arc<RpcClient>,
 }
 
 impl PeerWorker {
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        key: identity::Keypair,
         peers: Arc<RwLock<Vec<String>>>,
         relayer: Arc<RwLock<String>>,
         signer: Arc<RwLock<String>>,
@@ -125,8 +135,8 @@ impl PeerWorker {
         signer_election_worker_inbound_sender: mpsc::Sender<ElectionWorkerInboundEvent>,
         solana_relayer_inbound_sender: mpsc::Sender<RelayerInboundEvent>,
         solana_signer_inbound_sender: mpsc::Sender<SignerInboundEvent>,
+        solana_client: Arc<RpcClient>,
     ) -> Self {
-        let key = identity::Keypair::generate_ed25519();
         let peer_id = key.public().into();
 
         let (peer_worker_inbound_sender, peer_worker_inbound_receiver) = mpsc::channel(100);
@@ -147,6 +157,7 @@ impl PeerWorker {
             peer_worker_inbound_sender,
             signed_messages: Arc::new(RwLock::new(Vec::new())),
             relayed_transactions: Arc::new(RwLock::new(Vec::new())),
+            solana_client,
         }
     }
 
@@ -157,10 +168,13 @@ impl PeerWorker {
     ///
     /// * fail to convert key
     #[must_use]
-    pub fn solana_keypair(&self) -> SolanaKeypair {
-        let ed25519_key = self.key.clone().try_into_ed25519().expect("must be ed25519 keypair");
-        solana_sdk::signature::Keypair::from_bytes(&ed25519_key.to_bytes())
-            .expect("must be valid ed25519 keypair")
+    pub fn generate_keypair() -> (identity::Keypair, Arc<SolanaKeypair>) {
+        let key = identity::Keypair::generate_ed25519();
+        let ed25519_key = key.clone().try_into_ed25519().expect("must be ed25519 keypair");
+        let solana_key = SolanaKeypair::from_bytes(&ed25519_key.to_bytes())
+            .expect("must be valid ed25519 keypair");
+
+        (key, Arc::new(solana_key))
     }
 
     #[must_use]
@@ -169,12 +183,17 @@ impl PeerWorker {
     }
 
     /// The main worker to handle:
+    /// - handle events from other workers
+    /// - handle events from the p2p network and output to other workers
+    /// - handle stdin
     /// - send messages to the p2p network
+    /// - send signed message to the p2p network
+    /// - send relayed transaction to the p2p network
     /// - send peer heartbeat to the p2p network
     /// - send relayer sync info to the p2p network
     /// - send signer sync info to the p2p network
-    /// - handle messages from the p2p network and output to other workers
-    /// - handle stdin
+    /// - get transaction from solana
+    /// - record peers, signed messages, relayed transactions in the memory
     ///
     /// # Errors
     ///
@@ -212,14 +231,20 @@ impl PeerWorker {
                     if let Some(line) = line {
                         match line.as_str() {
                             cmd if cmd.starts_with("ls p") => handle_list_peers(&swarm),
-                            cmd if cmd.starts_with("ls s") => tracing::info!(
+                            cmd if cmd.starts_with("ls sm") => tracing::info!(
                                 "Signed Messages: {:?}",
                                 *self.signed_messages.read().await
                             ),
-                            cmd if cmd.starts_with("ls t") => tracing::info!(
+                            cmd if cmd.starts_with("ls tx") => tracing::info!(
                                 "Relayed Transactions: {:?}",
                                 *self.relayed_transactions.read().await
                             ),
+                            cmd if cmd.starts_with("get tx") => {
+                                let signature =
+                                    cmd.strip_prefix("get tx").expect("must match").trim();
+                                let tx = get_transaction(&self.solana_client, signature).await;
+                                tracing::info!("Get transaction `{signature} result: {tx:?}");
+                            }
                             _ => tracing::error!("unknown command from stdin"),
                         }
                     } else {
@@ -270,7 +295,7 @@ impl PeerWorker {
                     }
                     Some(PeerWorkerInboundEvent::Transaction(transaction)) => {
                         // send transaction to p2p network
-                        tracing::info!("Transaction: {transaction:?}");
+                        tracing::debug!("Transaction: {transaction:?}");
                         swarm.behaviour_mut().floodsub.publish(
                             TRANSACTION_TOPIC.clone(),
                             serde_json::to_vec(&transaction).expect("Transaction is valid json"),
@@ -290,21 +315,9 @@ impl PeerWorker {
                     Some(PeerWorkerInboundEvent::RelayedTransaction(transaction)) => {
                         self.relayed_transactions.write().await.push(transaction);
                     }
-                    Some(PeerWorkerInboundEvent::Instruction(instruction)) => match instruction {
-                        PeerWorkerInstruction::ListPeers(sender) => {
-                            let peers = self.peers.read().await.clone();
-                            drop(sender.send(peers));
-                        }
-                        PeerWorkerInstruction::ListSignedMessages(sender) => {
-                            let signed_messages = self.signed_messages.read().await.clone();
-                            drop(sender.send(signed_messages));
-                        }
-                        PeerWorkerInstruction::ListRelayedTransactions(sender) => {
-                            let relayed_transactions =
-                                self.relayed_transactions.read().await.clone();
-                            drop(sender.send(relayed_transactions));
-                        }
-                    },
+                    Some(PeerWorkerInboundEvent::Instruction(instruction)) => {
+                        self.handle_instruction(instruction).await;
+                    }
                 },
                 Action::Swarm(swarm_event) => match swarm_event {
                     SwarmEvent::Behaviour(PeerBehaviourEvent::Floobsub(
@@ -437,18 +450,59 @@ impl PeerWorker {
 
         Ok(())
     }
+
+    async fn handle_instruction(&self, instruction: PeerWorkerInstruction) {
+        match instruction {
+            PeerWorkerInstruction::ListPeers(sender) => {
+                let peers = self.peers.read().await.clone();
+                drop(sender.send(peers));
+            }
+            PeerWorkerInstruction::ListSignedMessages(sender) => {
+                let signed_messages = self.signed_messages.read().await.clone();
+                drop(sender.send(signed_messages));
+            }
+            PeerWorkerInstruction::ListRelayedTransactions(sender) => {
+                let relayed_transactions = self.relayed_transactions.read().await.clone();
+                drop(sender.send(relayed_transactions));
+            }
+            PeerWorkerInstruction::GetTransaction((signature, sender)) => {
+                let result = get_transaction(&self.solana_client, &signature).await;
+                drop(sender.send(result));
+            }
+        }
+    }
 }
 
 fn handle_list_peers(swarm: &Swarm<PeerBehaviour>) {
     tracing::info!("Discovered Peers:");
     let nodes = swarm.behaviour().mdns.discovered_nodes();
     let mut unique_peers = HashSet::new();
+    unique_peers.insert(swarm.local_peer_id());
+
     for peer in nodes {
         unique_peers.insert(peer);
     }
     for peer in unique_peers {
         tracing::info!("{peer}");
     }
+}
+
+async fn get_transaction(
+    solana_client: &RpcClient,
+    signature: &str,
+) -> Result<model::TransactionDetail> {
+    let signature = Signature::from_str(signature).context(error::ParseSolanaSignatureSnafu)?;
+    let config = RpcTransactionConfig {
+        encoding: Some(UiTransactionEncoding::Json),
+        commitment: Some(CommitmentConfig::confirmed()),
+        max_supported_transaction_version: Some(0),
+    };
+    let tx = solana_client
+        .get_transaction_with_config(&signature, config)
+        .await
+        .context(error::GetSolanaTransactionSnafu { signature })?;
+
+    Ok(model::TransactionDetail::from(tx))
 }
 
 fn start_swarm(

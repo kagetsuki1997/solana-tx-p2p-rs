@@ -85,8 +85,9 @@ clap = { workspace = true, features = [
 ] }
 clap_complete = { workspace = true }
 
-solana-client = { workspace = true }
-solana-sdk    = { workspace = true }
+solana-client                          = { workspace = true }
+solana-sdk                             = { workspace = true }
+solana-transaction-status-client-types = { workspace = true }
 
 bytes = { workspace = true }
 chrono = { workspace = true }

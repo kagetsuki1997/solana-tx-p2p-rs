@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use solana_client::rpc_client::RpcClient;
+use solana_client::{rpc_client::RpcClient, rpc_config::RpcTransactionConfig};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     instruction::Instruction,
@@ -8,6 +8,7 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
+use solana_transaction_status_client_types::UiTransactionEncoding;
 
 #[tokio::main]
 async fn main() {
@@ -44,10 +45,20 @@ async fn main() {
     // Add the instruction to new transaction
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer], client.get_latest_blockhash().unwrap());
+    println!("Transaction: {transaction:?}, Signer: {}", payer.pubkey());
 
     // Send and confirm the transaction
     match client.send_and_confirm_transaction(&transaction) {
-        Ok(signature) => println!("Transaction Signature: {signature}"),
+        Ok(signature) => {
+            println!("Transaction Signature: {signature}");
+            let config = RpcTransactionConfig {
+                encoding: Some(UiTransactionEncoding::Json),
+                commitment: Some(CommitmentConfig::confirmed()),
+                max_supported_transaction_version: Some(0),
+            };
+            let tx = client.get_transaction_with_config(&signature, config).unwrap();
+            println!("{tx:?}");
+        }
         Err(err) => eprintln!("Error sending transaction: {err}"),
     }
 }

@@ -14,9 +14,11 @@ pub use self::{
     error::Result,
     peer::{DefaultPeerService, PeerWorker, PeerWorkerInboundEvent, PeerWorkerInstruction},
     round_robin_election::{RRElectionWorker, RRElectionWorkerType},
-    solana::{RelayerInboundEvent, SignerInboundEvent, SolanaRelayer, SolanaSigner},
+    solana::{
+        create_solana_client, RelayerInboundEvent, SignerInboundEvent, SolanaRelayer, SolanaSigner,
+    },
 };
-use crate::ShutdownSignal;
+use crate::{model, ShutdownSignal};
 
 #[async_trait]
 pub trait PeerService {
@@ -25,6 +27,8 @@ pub trait PeerService {
     async fn list_signed_messages(&self) -> Result<Vec<Transaction>>;
 
     async fn list_relayed_transactions(&self) -> Result<Vec<String>>;
+
+    async fn get_transaction(&self, signature: &str) -> Result<model::TransactionDetail>;
 }
 
 /// Trigger message

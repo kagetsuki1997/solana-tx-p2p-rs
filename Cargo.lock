@@ -5531,6 +5531,7 @@ version = "0.0.1"
 dependencies = [
  "solana-client",
  "solana-sdk",
+ "solana-transaction-status-client-types",
  "tokio",
 ]
 
@@ -6929,6 +6930,7 @@ dependencies = [
  "snafu",
  "solana-client",
  "solana-sdk",
+ "solana-transaction-status-client-types",
  "tokio",
  "tokio-stream",
  "tonic",

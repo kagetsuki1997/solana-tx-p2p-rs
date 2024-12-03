@@ -1,7 +1,7 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: solana-tx-p2p
-  description: Transaction-relaying Peer-to-peer Node
+  description: Solana Transaction Peer-to-peer Node
   license:
     name: ""
   version: 0.0.1
@@ -40,6 +40,28 @@ paths:
                   type: string
         "500":
           description: Internal server error
+  /api/v1/peer/relayed-transaction/{signature}:
+    post:
+      tags:
+        - peer::v1
+      summary: Get relayed transaction
+      operationId: get_relayed_transaction
+      parameters:
+        - name: signature
+          in: path
+          description: Signature of transaction
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "500":
+          description: Internal server error
   /api/v1/peer/signed-message:
     post:
       tags:
@@ -61,28 +83,38 @@ components:
   schemas:
     CompiledInstruction:
       type: object
-      description: Workaround for OpenAPI docs
+      description: Workaround for `OpenAPI` docs
       required:
         - program_id_index
         - accounts
         - data
       properties:
         accounts:
-          type: string
-          format: binary
-          description: Ordered indices into the transaction keys array indicating which accounts to pass to the program.
+          type: array
+          items:
+            type: integer
+            format: int32
+            minimum: 0
+          description: |-
+            Ordered indices into the transaction keys array indicating which
+            accounts to pass to the program.
         data:
-          type: string
-          format: binary
+          type: array
+          items:
+            type: integer
+            format: int32
+            minimum: 0
           description: The program input data.
         program_id_index:
           type: integer
           format: int32
-          description: Index into the transaction keys array indicating the program account that executes this instruction.
+          description: |-
+            Index into the transaction keys array indicating the program account
+            that executes this instruction.
           minimum: 0
     Message:
       type: object
-      description: Workaround for OpenAPI docs
+      description: Workaround for `OpenAPI` docs
       required:
         - header
         - account_keys
@@ -95,67 +127,79 @@ components:
             type: string
           description: All the account keys used by this transaction.
         header:
-          type: object
-          description: Workaround for OpenAPI docs
-          required:
-            - num_required_signatures
-            - num_readonly_signed_accounts
-            - num_readonly_unsigned_accounts
-          properties:
-            num_readonly_signed_accounts:
-              type: integer
-              format: int32
-              description: |-
-                The last `num_readonly_signed_accounts` of the signed keys are read-only
-                accounts.
-              minimum: 0
-            num_readonly_unsigned_accounts:
-              type: integer
-              format: int32
-              description: |-
-                The last `num_readonly_unsigned_accounts` of the unsigned keys are
-                read-only accounts.
-              minimum: 0
-            num_required_signatures:
-              type: integer
-              format: int32
-              description: |-
-                The number of signatures required for this message to be considered
-                valid. The signers of those signatures must match the first
-                `num_required_signatures` of [`Message::account_keys`].
-              minimum: 0
+          oneOf:
+            - type: object
+              description: Workaround for `OpenAPI` docs
+              required:
+                - num_required_signatures
+                - num_readonly_signed_accounts
+                - num_readonly_unsigned_accounts
+              properties:
+                num_readonly_signed_accounts:
+                  type: integer
+                  format: int32
+                  description: |-
+                    The last `num_readonly_signed_accounts` of the signed keys are read-only
+                    accounts.
+                  minimum: 0
+                num_readonly_unsigned_accounts:
+                  type: integer
+                  format: int32
+                  description: |-
+                    The last `num_readonly_unsigned_accounts` of the unsigned keys are
+                    read-only accounts.
+                  minimum: 0
+                num_required_signatures:
+                  type: integer
+                  format: int32
+                  description: |-
+                    The number of signatures required for this message to be considered
+                    valid. The signers of those signatures must match the first
+                    `num_required_signatures` of [`Message::account_keys`].
+                  minimum: 0
+          description: The message header, identifying signed and read-only `account_keys`.
         instructions:
           type: array
           items:
             type: object
-            description: Workaround for OpenAPI docs
+            description: Workaround for `OpenAPI` docs
             required:
               - program_id_index
               - accounts
               - data
             properties:
               accounts:
-                type: string
-                format: binary
-                description: Ordered indices into the transaction keys array indicating which accounts to pass to the program.
+                type: array
+                items:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                description: |-
+                  Ordered indices into the transaction keys array indicating which
+                  accounts to pass to the program.
               data:
-                type: string
-                format: binary
+                type: array
+                items:
+                  type: integer
+                  format: int32
+                  minimum: 0
                 description: The program input data.
               program_id_index:
                 type: integer
                 format: int32
-                description: Index into the transaction keys array indicating the program account that executes this instruction.
+                description: |-
+                  Index into the transaction keys array indicating the program account
+                  that executes this instruction.
                 minimum: 0
           description: |-
-            Programs that will be executed in sequence and committed in one atomic transaction if all
-            succeed.
+            Programs that will be executed in sequence and committed in one atomic
+            transaction if all succeed.
         recent_blockhash:
           type: string
           description: The id of a recent ledger entry.
     MessageHeader:
       type: object
-      description: Workaround for OpenAPI docs
+      description: Workaround for `OpenAPI` docs
       required:
         - num_required_signatures
         - num_readonly_signed_accounts
@@ -185,84 +229,98 @@ components:
           minimum: 0
     Transaction:
       type: object
-      description: Workaround for OpenAPI docs
+      description: Workaround for `OpenAPI` docs
       required:
         - signatures
         - message
       properties:
         message:
-          type: object
-          description: Workaround for OpenAPI docs
-          required:
-            - header
-            - account_keys
-            - recent_blockhash
-            - instructions
-          properties:
-            account_keys:
-              type: array
-              items:
-                type: string
-              description: All the account keys used by this transaction.
-            header:
-              type: object
-              description: Workaround for OpenAPI docs
+          oneOf:
+            - type: object
+              description: Workaround for `OpenAPI` docs
               required:
-                - num_required_signatures
-                - num_readonly_signed_accounts
-                - num_readonly_unsigned_accounts
+                - header
+                - account_keys
+                - recent_blockhash
+                - instructions
               properties:
-                num_readonly_signed_accounts:
-                  type: integer
-                  format: int32
-                  description: |-
-                    The last `num_readonly_signed_accounts` of the signed keys are read-only
-                    accounts.
-                  minimum: 0
-                num_readonly_unsigned_accounts:
-                  type: integer
-                  format: int32
-                  description: |-
-                    The last `num_readonly_unsigned_accounts` of the unsigned keys are
-                    read-only accounts.
-                  minimum: 0
-                num_required_signatures:
-                  type: integer
-                  format: int32
-                  description: |-
-                    The number of signatures required for this message to be considered
-                    valid. The signers of those signatures must match the first
-                    `num_required_signatures` of [`Message::account_keys`].
-                  minimum: 0
-            instructions:
-              type: array
-              items:
-                type: object
-                description: Workaround for OpenAPI docs
-                required:
-                  - program_id_index
-                  - accounts
-                  - data
-                properties:
-                  accounts:
+                account_keys:
+                  type: array
+                  items:
                     type: string
-                    format: binary
-                    description: Ordered indices into the transaction keys array indicating which accounts to pass to the program.
-                  data:
-                    type: string
-                    format: binary
-                    description: The program input data.
-                  program_id_index:
-                    type: integer
-                    format: int32
-                    description: Index into the transaction keys array indicating the program account that executes this instruction.
-                    minimum: 0
-              description: |-
-                Programs that will be executed in sequence and committed in one atomic transaction if all
-                succeed.
-            recent_blockhash:
-              type: string
-              description: The id of a recent ledger entry.
+                  description: All the account keys used by this transaction.
+                header:
+                  oneOf:
+                    - type: object
+                      description: Workaround for `OpenAPI` docs
+                      required:
+                        - num_required_signatures
+                        - num_readonly_signed_accounts
+                        - num_readonly_unsigned_accounts
+                      properties:
+                        num_readonly_signed_accounts:
+                          type: integer
+                          format: int32
+                          description: |-
+                            The last `num_readonly_signed_accounts` of the signed keys are read-only
+                            accounts.
+                          minimum: 0
+                        num_readonly_unsigned_accounts:
+                          type: integer
+                          format: int32
+                          description: |-
+                            The last `num_readonly_unsigned_accounts` of the unsigned keys are
+                            read-only accounts.
+                          minimum: 0
+                        num_required_signatures:
+                          type: integer
+                          format: int32
+                          description: |-
+                            The number of signatures required for this message to be considered
+                            valid. The signers of those signatures must match the first
+                            `num_required_signatures` of [`Message::account_keys`].
+                          minimum: 0
+                  description: The message header, identifying signed and read-only `account_keys`.
+                instructions:
+                  type: array
+                  items:
+                    type: object
+                    description: Workaround for `OpenAPI` docs
+                    required:
+                      - program_id_index
+                      - accounts
+                      - data
+                    properties:
+                      accounts:
+                        type: array
+                        items:
+                          type: integer
+                          format: int32
+                          minimum: 0
+                        description: |-
+                          Ordered indices into the transaction keys array indicating which
+                          accounts to pass to the program.
+                      data:
+                        type: array
+                        items:
+                          type: integer
+                          format: int32
+                          minimum: 0
+                        description: The program input data.
+                      program_id_index:
+                        type: integer
+                        format: int32
+                        description: |-
+                          Index into the transaction keys array indicating the program account
+                          that executes this instruction.
+                        minimum: 0
+                  description: |-
+                    Programs that will be executed in sequence and committed in one atomic
+                    transaction if all succeed.
+                recent_blockhash:
+                  type: string
+                  description: The id of a recent ledger entry.
+          description: The message to sign.
         signatures:
           type: array
           items:
@@ -276,3 +334,30 @@ components:
             [`account_keys`]: Message::account_keys
             [`MessageHeader`]: crate::message::MessageHeader
             [`num_required_signatures`]: crate::message::MessageHeader::num_required_signatures
+    TransactionDetail:
+      type: object
+      required:
+        - signatures
+        - accountKeys
+        - signers
+        - logMessages
+      properties:
+        accountKeys:
+          type: array
+          items:
+            type: string
+          description: base58 encoded string of account key
+        logMessages:
+          type: array
+          items:
+            type: string
+        signatures:
+          type: array
+          items:
+            type: string
+          description: base58 encoded string of signature
+        signers:
+          type: array
+          items:
+            type: string
+          description: base58 encoded string of signer `PeerId`

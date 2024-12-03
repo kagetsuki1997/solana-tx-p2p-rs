@@ -6,8 +6,9 @@ use snafu::ResultExt;
 use solana_sdk::pubkey::Pubkey;
 use solana_tx_p2p::{
     service::{
-        start_heartbeat_trigger, start_message_trigger, PeerWorker, PeerWorkerInboundEvent,
-        RRElectionWorker, RRElectionWorkerType, SolanaRelayer, SolanaSigner,
+        create_solana_client, start_heartbeat_trigger, start_message_trigger, PeerWorker,
+        PeerWorkerInboundEvent, RRElectionWorker, RRElectionWorkerType, SolanaRelayer,
+        SolanaSigner,
     },
     ShutdownSignal, SignalHandleBuilder,
 };
@@ -100,7 +101,7 @@ impl NodeCmd {
 
             tracing::info!("Initializing P2P Node");
             let _peer_worker_inbound_sender =
-                self.start_node(&mut join_set, shutdown_signal, stdin_receiver)?;
+                self.start_node(&mut join_set, shutdown_signal, stdin_receiver).await?;
 
             // stdin reader
             let rt = Runtime::new().context(error::InitializeAsyncRuntimeSnafu)?;
@@ -141,7 +142,7 @@ impl NodeCmd {
     }
 
     #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
-    pub fn start_node(
+    pub async fn start_node(
         self,
         join_set: &mut JoinSet<solana_tx_p2p::Result<()>>,
         shutdown_signal: ShutdownSignal,
@@ -169,9 +170,16 @@ impl NodeCmd {
 
         let (solana_signer_inbound_sender, solana_signer_inbound_receiver) = mpsc::channel(100);
         let (solana_relayer_inbound_sender, solana_relayer_inbound_receiver) = mpsc::channel(100);
+        let (keypair, solana_keypair) = PeerWorker::generate_keypair();
+
+        tracing::info!("Initializing Solana client");
+        let solana_client = create_solana_client(&solana.rpc_url, solana_keypair.clone())
+            .await
+            .context(error::CreateSolanaClientSnafu)?;
 
         tracing::info!("Initializing PeerWorker");
         let peer_worker = PeerWorker::new(
+            keypair,
             peers.clone(),
             relayer.clone(),
             signer.clone(),
@@ -181,10 +189,10 @@ impl NodeCmd {
             signer_election_worker_inbound_sender,
             solana_relayer_inbound_sender,
             solana_signer_inbound_sender,
+            solana_client.clone(),
         );
         let peer_worker_inbound_sender = peer_worker.peer_worker_inbound_sender();
         let peer_id = peer_worker.peer_id();
-        let solana_keypair = Arc::new(peer_worker.solana_keypair());
 
         join_set
             .build_task()
@@ -233,7 +241,7 @@ impl NodeCmd {
             solana_keypair.clone(),
             peer_worker_inbound_sender.clone(),
             solana.program_id,
-            solana.rpc_url.clone(),
+            solana_client.clone(),
             solana_signer_inbound_receiver,
         );
         join_set
@@ -246,9 +254,8 @@ impl NodeCmd {
         let solana_relayer = SolanaRelayer::new(
             peer_id,
             relayer,
-            solana_keypair,
             peer_worker_inbound_sender.clone(),
-            solana.rpc_url,
+            solana_client,
             solana_relayer_inbound_receiver,
         );
         join_set

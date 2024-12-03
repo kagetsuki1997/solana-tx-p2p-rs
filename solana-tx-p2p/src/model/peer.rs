@@ -1,7 +1,13 @@
+use libp2p::{identity, PeerId};
+use serde::{Deserialize, Serialize};
 use solana_sdk::{
     instruction::CompiledInstruction,
     message::{Message, MessageHeader},
+    pubkey::Pubkey,
     transaction::Transaction,
+};
+use solana_transaction_status_client_types::{
+    EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction, UiMessage, UiTransaction,
 };
 use utoipa::ToSchema;
 
@@ -121,4 +127,64 @@ pub struct CompiledInstructionForUtoipa {
     pub accounts: Vec<u8>,
     /// The program input data.
     pub data: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionDetail {
+    /// base58 encoded string of signature
+    signatures: Vec<String>,
+    /// base58 encoded string of account key
+    account_keys: Vec<String>,
+    /// base58 encoded string of signer `PeerId`
+    signers: Vec<String>,
+    log_messages: Vec<String>,
+}
+
+impl From<EncodedConfirmedTransactionWithStatusMeta> for TransactionDetail {
+    fn from(
+        EncodedConfirmedTransactionWithStatusMeta {  transaction, ..}: EncodedConfirmedTransactionWithStatusMeta,
+    ) -> Self {
+        match transaction.transaction {
+            EncodedTransaction::Json(UiTransaction { signatures, message }) => {
+                if let UiMessage::Raw(message) = message {
+                    let log_messages = transaction
+                        .meta
+                        .and_then(|meta| meta.log_messages.into())
+                        .unwrap_or_default();
+                    Self {
+                        signatures,
+                        account_keys: message.account_keys.clone(),
+                        signers: message.account_keys
+                            [0..message.header.num_required_signatures as usize]
+                            .iter()
+                            .map(|pkey| solana_public_key_str_to_peer_id(pkey).to_base58())
+                            .collect(),
+                        log_messages,
+                    }
+                } else {
+                    unimplemented!("unsupported `UiMessage` {message:?}")
+                }
+            }
+            _ => unimplemented!("unsupported `EncodedTransaction`"),
+        }
+    }
+}
+
+impl From<TransactionDetail> for proto::TransactionDetail {
+    fn from(
+        TransactionDetail { signatures, account_keys, signers, log_messages }: TransactionDetail,
+    ) -> Self {
+        Self { signatures, account_keys, signers, log_messages }
+    }
+}
+
+fn solana_public_key_str_to_peer_id(solana_pkey_str: &str) -> PeerId {
+    let solana_pkey = Pubkey::from_str_const(solana_pkey_str);
+    let pkey: identity::PublicKey =
+        identity::ed25519::PublicKey::try_from_bytes(&solana_pkey.to_bytes())
+            .expect("convert solana public key to libp2p ed25519 public key")
+            .into();
+
+    pkey.into()
 }

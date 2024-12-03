@@ -53,4 +53,14 @@ where
 
         Ok(Response::new(proto::v1::RelayTransactions { signatures }))
     }
+
+    async fn get_relayed_transaction(
+        &self,
+        request: Request<proto::v1::GetRelayedTransactionRequest>,
+    ) -> Result<Response<proto::TransactionDetail>, Status> {
+        let signature = request.into_inner().signature;
+        let tx = self.inner.get_transaction(&signature).await?;
+
+        Ok(Response::new(tx.into()))
+    }
 }

@@ -6,6 +6,7 @@ use axum::{
 };
 use http::{header, StatusCode};
 use snafu::{Backtrace, Snafu};
+use solana_sdk::signature::{ParseSignatureError, Signature};
 use tokio::sync::{
     mpsc::error::SendError as MpscSendError, oneshot::error::RecvError as OneshotRecvError,
 };
@@ -36,20 +37,51 @@ pub enum Error {
         backtrace: Backtrace,
     },
 
-    #[snafu(display("Fail to list peers`{}", fmt_backtrace_with_source(backtrace, source)))]
+    #[snafu(display("Fail to list peers{}", fmt_backtrace_with_source(backtrace, source)))]
     ListPeers { source: OneshotRecvError, backtrace: Backtrace },
 
     #[snafu(display(
-        "Fail to list signed messages`{}",
+        "Fail to list signed messages{}",
         fmt_backtrace_with_source(backtrace, source)
     ))]
     ListSignedMessages { source: OneshotRecvError, backtrace: Backtrace },
 
     #[snafu(display(
-        "Fail to list relayed transactions`{}",
+        "Fail to list relayed transactions{}",
         fmt_backtrace_with_source(backtrace, source)
     ))]
     ListRelayedTransactions { source: OneshotRecvError, backtrace: Backtrace },
+
+    #[snafu(display("Fail to get transaction{}", fmt_backtrace_with_source(backtrace, source)))]
+    GetTransaction { source: OneshotRecvError, backtrace: Backtrace },
+
+    #[snafu(display("Fail to request airdrop{}", fmt_backtrace_with_source(backtrace, source)))]
+    RequestAirdrop { source: solana_client::client_error::ClientError, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Fail to confirm transaction{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    ConfirmSolanaTransaction {
+        source: solana_client::client_error::ClientError,
+        backtrace: Backtrace,
+    },
+
+    #[snafu(display(
+        "Fail to parse solana signature{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    ParseSolanaSignature { source: ParseSignatureError, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Fail to get solana transaction of `{signature}`{}",
+        fmt_backtrace_with_source(backtrace, source)
+    ))]
+    GetSolanaTransaction {
+        signature: Signature,
+        source: solana_client::client_error::ClientError,
+        backtrace: Backtrace,
+    },
 }
 
 impl IntoResponse for Error {

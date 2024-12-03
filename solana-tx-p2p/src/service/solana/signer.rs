@@ -4,8 +4,8 @@ use bytes::Bytes;
 use libp2p::PeerId;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
-    commitment_config::CommitmentConfig, instruction::Instruction, pubkey::Pubkey,
-    signature::Keypair as SolanaKeypair, signer::Signer as _, transaction::Transaction,
+    instruction::Instruction, pubkey::Pubkey, signature::Keypair as SolanaKeypair,
+    signer::Signer as _, transaction::Transaction,
 };
 use tokio::sync::{mpsc, RwLock};
 
@@ -31,7 +31,7 @@ pub struct SolanaSigner {
     peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>,
 
     program_id: Pubkey,
-    rpc_url: String,
+    client: Arc<RpcClient>,
 
     inbound_receiver: mpsc::Receiver<SignerInboundEvent>,
 }
@@ -44,7 +44,7 @@ impl SolanaSigner {
         keypair: Arc<SolanaKeypair>,
         peer_worker_inbound_sender: mpsc::Sender<PeerWorkerInboundEvent>,
         program_id: Pubkey,
-        rpc_url: String,
+        client: Arc<RpcClient>,
         inbound_receiver: mpsc::Receiver<SignerInboundEvent>,
     ) -> Self {
         Self {
@@ -53,7 +53,7 @@ impl SolanaSigner {
             keypair,
             peer_worker_inbound_sender,
             program_id,
-            rpc_url,
+            client,
             inbound_receiver,
         }
     }
@@ -63,31 +63,6 @@ impl SolanaSigner {
     /// * fail to request airdrop
     /// * fail to confirm airdrop transaction
     pub async fn start(mut self, mut shutdown_signal: ShutdownSignal) -> Result<()> {
-        // Connect to the Solana devnet
-        let client = RpcClient::new_with_commitment(self.rpc_url, CommitmentConfig::confirmed());
-
-        // Request airdrop
-        tracing::debug!("Request airdrop confirmation");
-        let airdrop_amount = 1_000_000_000; // 1 SOL
-        let signature = client
-            .request_airdrop(&self.keypair.pubkey(), airdrop_amount)
-            .await
-            .expect("Failed to request airdrop");
-
-        // Wait for airdrop confirmation
-        tracing::debug!("Wait airdrop confirmation");
-        loop {
-            let confirmed = client
-                .confirm_transaction(&signature)
-                .await
-                .expect("Failed to confirm transaction");
-            if confirmed {
-                break;
-            }
-        }
-
-        tracing::debug!("Complete airdrop confirmation");
-
         loop {
             let action = tokio::select! {
                 () = shutdown_signal.wait() => Action::Stop,
@@ -119,7 +94,7 @@ impl SolanaSigner {
                                 Some(&self.keypair.pubkey()),
                             );
 
-                            match client.get_latest_blockhash().await {
+                            match self.client.get_latest_blockhash().await {
                                 Ok(recent_blockhash) => {
                                     transaction.sign(&[&self.keypair], recent_blockhash);
                                 }

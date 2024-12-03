@@ -10,6 +10,7 @@ service PeerService {
   rpc DiscoveryPeers(google.protobuf.Empty) returns (Peers);
   rpc ListSignedMessages(google.protobuf.Empty) returns (Transactions);
   rpc ListRelayedTransactions(google.protobuf.Empty) returns (RelayTransactions);
+  rpc GetRelayedTransaction(GetRelayedTransactionRequest) returns (TransactionDetail);
 }
 
 message Peers {
@@ -18,4 +19,8 @@ message Peers {
 
 message RelayTransactions {
   repeated string signatures = 1;
+}
+
+message GetRelayedTransactionRequest {
+  string signature = 1;
 }

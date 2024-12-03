@@ -3,8 +3,9 @@ use snafu::ResultExt;
 use solana_sdk::transaction::Transaction;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::service::{
-    error, error::Result, PeerService, PeerWorkerInboundEvent, PeerWorkerInstruction,
+use crate::{
+    model,
+    service::{error, error::Result, PeerService, PeerWorkerInboundEvent, PeerWorkerInstruction},
 };
 
 #[derive(Clone)]
@@ -64,5 +65,17 @@ impl PeerService for DefaultPeerService {
         let relayed_transactions = receiver.await.context(error::ListRelayedTransactionsSnafu)?;
 
         Ok(relayed_transactions)
+    }
+
+    async fn get_transaction(&self, signature: &str) -> Result<model::TransactionDetail> {
+        let (sender, receiver) = oneshot::channel();
+
+        let instruction = PeerWorkerInstruction::GetTransaction((signature.to_string(), sender));
+        self.peer_worker_inbound_sender
+            .send(PeerWorkerInboundEvent::Instruction(instruction))
+            .await
+            .context(error::SendPeerWorkerInstructionSnafu { instruction: "GetTransaction" })?;
+
+        receiver.await.context(error::ListRelayedTransactionsSnafu)?
     }
 }

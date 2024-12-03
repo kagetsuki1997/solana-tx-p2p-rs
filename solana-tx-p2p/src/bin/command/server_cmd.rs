@@ -150,8 +150,9 @@ impl ServerCmd {
 
             tracing::info!("Initializing P2P Node");
             let (_stdin_sender, dummy_stdin_receiver) = mpsc::channel(10);
-            let peer_worker_inbound_receiver =
-                node.start_node(&mut join_set, shutdown_signal.clone(), dummy_stdin_receiver)?;
+            let peer_worker_inbound_receiver = node
+                .start_node(&mut join_set, shutdown_signal.clone(), dummy_stdin_receiver)
+                .await?;
 
             tracing::info!("Initializing app state");
             let app_state = DefaultAppState::new(peer_worker_inbound_receiver);

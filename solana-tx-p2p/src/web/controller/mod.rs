@@ -10,7 +10,7 @@ use utoipa::OpenApi;
 use crate::{
     app_state::AppState,
     model::{
-        CompiledInstructionForUtoipa, MessageForUtoipa, MessageHeaderForUtoipa,
+        CompiledInstructionForUtoipa, MessageForUtoipa, MessageHeaderForUtoipa, TransactionDetail,
         TransactionForUtoipa,
     },
 };
@@ -47,13 +47,15 @@ where
     paths(
         peer::v1::discovery,
         peer::v1::list_signed_messages,
-        peer::v1::list_relayed_transactions
+        peer::v1::list_relayed_transactions,
+        peer::v1::get_relayed_transaction,
     ),
     components(schemas(
         TransactionForUtoipa,
         MessageForUtoipa,
         MessageHeaderForUtoipa,
-        CompiledInstructionForUtoipa
+        CompiledInstructionForUtoipa,
+        TransactionDetail,
     ))
 )]
 pub struct ApiDoc;

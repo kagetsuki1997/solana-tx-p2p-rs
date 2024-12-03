@@ -131,9 +131,9 @@ EOF
 FROM alpine AS solana-tx-p2p-server
 
 COPY --from=builder \
-  /usr/local/bin/solana-tx-p2p-server \
+  /usr/local/bin/solana-tx-p2p \
   /usr/bin/
 
 USER 8787:8787
 
-ENTRYPOINT [ "/usr/bin/solana-tx-p2p-server" ]
+ENTRYPOINT [ "/usr/bin/solana-tx-p2p" ]

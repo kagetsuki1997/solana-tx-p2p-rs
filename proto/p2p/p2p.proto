@@ -29,3 +29,10 @@ message CompiledInstruction {
   bytes accounts = 2;
   bytes data = 3;
 }
+
+message TransactionDetail {
+  repeated string signatures = 1;
+  repeated string account_keys = 2;
+  repeated string signers = 3;
+  repeated string log_messages = 4;
+}
