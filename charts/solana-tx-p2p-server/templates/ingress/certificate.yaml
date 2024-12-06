@@ -1,0 +1,19 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  namespace: istio-system
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+spec:
+  secretName: {{ include "solana-tx-p2p-server.certificate.secretName" . }}
+  commonName: {{ .Values.ingress.domain }}
+  dnsNames:
+    - {{ .Values.ingress.domain }}
+  issuerRef:
+    {{- toYaml .Values.ingress.tls.certificate.issuerRef | nindent 4 }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+{{- end }}

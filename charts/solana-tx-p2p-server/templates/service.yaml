@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  {{- with .Values.service.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ include "common.httpPort" .}}
+      protocol: TCP
+      appProtocol: http
+      targetPort: http
+    - name: grpc
+      port: {{ include "common.grpcPort" . }}
+      protocol: TCP
+      appProtocol: grpc
+      targetPort: grpc
+    - name: metrics
+      port: {{ include "common.metricsPort" . }}
+      protocol: TCP
+      appProtocol: http
+      targetPort: metrics
+  selector:
+    {{- include "solana-tx-p2p-server.selectorLabels" . | nindent 4 }}

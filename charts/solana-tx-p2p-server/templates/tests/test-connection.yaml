@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "solana-tx-p2p-server.fullname" . }}-test-connection"
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command:
+        - wget
+      args:
+        - {{ printf "%s/startz" (include "solana-tx-p2p-server.metricsEndpoint" .) }}
+  restartPolicy: Never

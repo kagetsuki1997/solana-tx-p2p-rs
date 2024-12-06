@@ -1,0 +1,38 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+spec:
+  hosts:
+    - {{ .Values.ingress.domain }}
+  gateways:
+    - mesh
+    - {{ include "solana-tx-p2p-server.fullname" . }}
+  http:
+    - name: rest
+      corsPolicy:
+        allowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        allowHeaders:
+          - origin
+          - content-type
+          - accept
+          - authorization
+      route:
+        - destination:
+            host: {{ include "solana-tx-p2p-server.host" . }}
+            port:
+              number: {{ include "common.httpPort" . }}
+    - name: grpc
+      route:
+        - destination:
+            host: {{ include "solana-tx-p2p-server.host" . }}
+            port:
+              number: {{ include "common.grpcPort" . }}
+{{- end }}

@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+      hosts:
+        - {{ .Values.ingress.domain }}
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        minProtocolVersion: {{ .Values.ingress.tls.minProtocolVersion }}
+        mode: SIMPLE
+        credentialName: {{ include "solana-tx-p2p-server.certificate.secretName" . }}
+      hosts:
+        - {{ .Values.ingress.domain }}
+    - port:
+        number: 50051
+        name: grpc
+        protocol: GRPC
+      hosts:
+        - {{ .Values.ingress.domain }}
+{{- end }}

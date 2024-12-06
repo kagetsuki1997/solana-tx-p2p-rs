@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "solana-tx-p2p-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: {{ include (printf "%s/configmap.yaml" .Template.BasePath) . | sha256sum }}
+        checksum/secret: {{ include (printf "%s/secret.yaml" .Template.BasePath) . | sha256sum }}
+        kubectl.kubernetes.io/default-container: {{ include "solana-tx-p2p-server.container.name" . }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "solana-tx-p2p-server.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "solana-tx-p2p-server.serviceAccount.name" . }}
+      containers:
+        - name: {{ include "solana-tx-p2p-server.container.name" . }}
+          image: {{ printf "%s/%s:%s" .Values.image.registry .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) }}
+          {{- with .Values.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          command:
+            - /usr/bin/solana-tx-p2p-server
+          args:
+            - server
+          env:
+            {{- include "common.podInfoEnvs" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "solana-tx-p2p-server.fullname" . }}
+            - secretRef:
+                name: {{ include "solana-tx-p2p-server.fullname" . }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /startz
+              port: metrics
+          {{- with .Values.startupProbe }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: metrics
+          {{- with .Values.livenessProbe }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+          {{- with .Values.readinessProbe }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

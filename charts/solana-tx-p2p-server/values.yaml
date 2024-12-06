@@ -1,0 +1,92 @@
+nameOverride: ~
+fullnameOverride: ~
+
+# Kubernetes config
+clusterDomain: cluster.local
+
+# application config
+logFormat: ~
+logLevel: ~
+messageDuration: 5s
+relayLeaderDuration: 10s
+signingLeaderDuration: 15s
+solanaProgramId: C4zHy4qLZsqTk7jSRTfD2riHdRUJzaWwBfceovJiiBwR
+solanaRpcUrl: http://127.0.0.1:8899
+
+# ingress
+ingress:
+  enabled: false
+  domain: ~
+  tls:
+    minProtocolVersion: TLS_AUTO
+    certificate:
+      issuerRef:
+        group: cert-manager.io
+        kind: ClusterIssuer
+        name: self-signed
+
+# deployment
+replicas: 1
+strategy: ~
+
+# deployment/pod
+podAnnotations: ~
+podLabels: ~
+imagePullSecrets: ~
+priorityClassName: ~
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+nodeSelector: ~
+affinity: ~
+tolerations: ~
+topologySpreadConstraints: ~
+
+# deployment/pod/container
+image:
+  registry: localhost
+  repository: solana-tx-p2p/server
+  tag: ~
+  pullPolicy: Always
+startupProbe: ~
+livenessProbe: ~
+readinessProbe: ~
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# service
+service:
+  annotations: ~
+  labels: ~
+  type: ClusterIP
+
+# service account
+serviceAccount:
+  annotations: ~
+  labels: ~
+  # will use existing service account if name is specified
+  name: ~
+
+# hpa
+autoscaling:
+  enabled: false
+  annotations: ~
+  labels: ~
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# certificate
+certificate:
+  # will use existing issuer if issuerRef is specified
+  issuerRef: ~

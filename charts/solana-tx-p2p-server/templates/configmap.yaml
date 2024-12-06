@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "solana-tx-p2p-server.labels" . | nindent 4 }}
+  name: {{ include "solana-tx-p2p-server.fullname" . }}
+data:
+  SOLANA_TX_P2P_GRPC_ADDRESS: "::"
+  SOLANA_TX_P2P_GRPC_PORT: "50051"
+  SOLANA_TX_P2P_METRICS_ADDRESS: "::"
+  SOLANA_TX_P2P_METRICS_PORT: "9090"
+  SOLANA_TX_P2P_API_ADDRESS: "::"
+  SOLANA_TX_P2P_API_PORT: "8080"
+  SOLANA_TX_P2P_MESSAGE_DURATION: {{ quote .Values.messageDuration }}
+  SOLANA_TX_P2P_RELAY_LEADER_DURATION: {{ quote .Values.relayLeaderDuration }}
+  SOLANA_TX_P2P_SIGNING_LEADER_DURATION: {{ quote .Values.signingLeaderDuration }}
+  SOLANA_TX_P2P_SOLANA_PROGRAM_ID: {{ quote .Values.solanaProgramId }}
+  SOLANA_TX_P2P_SOLANA_RPC_URL: {{ quote .Values.solanaRpcUrl }}
+  {{- with .Values.logLevel }}
+  RUST_LOG: {{ quote . }}
+  {{- end }}
