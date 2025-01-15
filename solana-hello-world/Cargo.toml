@@ -3,7 +3,7 @@ name          = "solana-hello-world"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
-rust-version  = { workspace = true }
+rust-version  = "1.79"
 description   = "Solana Hello World Program"
 documentation = { workspace = true }
 readme        = { workspace = true }
