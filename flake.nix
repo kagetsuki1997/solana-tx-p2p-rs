@@ -15,6 +15,8 @@
       {
         imports = [
           ./dev-support/flake-modules/shell.nix
+          ./dev-support/flake-modules/default.nix
+          ./dev-support/flake-modules/script.nix
         ];
 
         systems = [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ];
